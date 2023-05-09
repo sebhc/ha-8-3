@@ -1,0 +1,94 @@
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+; rnd.mac
+;
+; Pseudo-random number generator in a 'C'-callable function.
+;
+; Usage: rnd(seed)
+;
+; If seed is non-zero then it is used to seed the random
+; number algorithm, otherwise the routine will proceed
+; from the previous value.
+;
+; This routine is derived from the source code for Benton
+; Harbor Basic which uses a Tausworthe 15-bit primitive 
+; trinomial algorithm.
+;
+; http://code.fed.wiki.org/view/tausworthe-generator
+;
+; The calling interface here is designed for the
+; Software Toolworks C/80 3.0 compiler.  The C/80 calling
+; protocol is to push arguments (right-to-left) as
+; 16-bit quantities on the stack.  Value functions are
+; returned in the HL register.
+;
+; This code is intended to be assembled with the Microsoft
+; Macro-80 assembler which creates a relocatable module
+; that can be used as a stand alone (.REL) file or 
+; stored in a library (.LIB file) using the Microsoft 
+; LIB-80 Library Manager.  The Microsoft LINK-80 loader 
+; program is then used to link this code with the main 
+; (calling) program.
+;
+; Release: June 2022
+;
+; 	Glenn Roberts
+; 	glenn.f.roberts@gmail.com
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;
+;	Public routines defined in this module:
+;
+	PUBLIC	RND
+;
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+; rnd - return pseudo-random number
+;
+;	C usage: rnd(seed)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=*
+
+RNDA:	DW	'GL'		; seed
+
+RND:	POP	D		; return
+	POP	H		; HL = seed
+	PUSH	H		; repair the stack
+	PUSH	D
+	
+	MOV	A,H		; test for seed==0
+	ORA	L
+	JZ	RND1		; zero - no new seed
+	SHLD	RNDA		; HL is new seed, save it
+
+RND1:	LHLD	RNDA		; HL = seed
+	MVI	D,15		; D = bit count
+RND2:	MOV	A,H		; shift right one
+	ANA	A
+	RAR
+	MOV	H,A
+	MOV	A,L
+	RAR
+	MOV	L,A
+	RAL			; 'C' = 1
+	RAL
+	RAL
+	RAL			; 'C' = 10Q
+	XRA	L		; XOR with value
+	RAL
+	RAL
+	RAL
+	ANI	100Q
+	ORA	H		; insert in left
+	MOV	H,A
+	DCR	D
+	JNZ	RND2		; more to go
+	
+	SHLD	RNDA		; done. HL = result
+
+	RET
+
+	END
+	

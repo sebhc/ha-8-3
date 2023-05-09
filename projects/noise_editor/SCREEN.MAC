@@ -1,0 +1,37 @@
+	PUBLIC	SCREEN
+
+SCREEN:	DB 'wHJGqFfaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+	DB 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaacY! `iiiiiiiiiiiG         N'
+	DB 'Ovel Interactive Sound Editor (NOISE)      FiiiiiiiiiiiiiG'
+	DB ' F`Y" vaaaaaaaaaaaaasaaaaaaaaaaaaaaaaaaaaaaaaaaaaaasaaaaaa'
+	DB 'aaaaaaaaaaaaaaaaaaaaaaaaaaatY# `Y#.`Y#2 C GY#;Channel'
+	DB 'FY#M`GY#PEnvelopepFCPqGeriod:   14332   FY#o`Y$ `'
+	DB 'Y$.vaaaaaaaaaaaaaaaaaaaaaaaaaaaaaatY$o`Y% `C         Y%'
+	DB '.`Y%4 GY%7A Y%;     B Y%D     C C F`GC FEGnvelope'
+	DB ' pSqhape:             FY%o`Y& `Y&.vaaaaaaaaaaaaaaaaaaa'
+	DB 'aaaaaaaaaaatGC                    FY&o`Y'' `pGY''#N'
+	DB 'qoise OnFY''.`Y''7^Y''@^Y''I^Y''M`GC  F^   0   y`y`'
+	DB 'y`y`y`y`y`y`Y''o`Y( `G  pTqone On FY(.`GY(2 FY(6 '
+	DB '^Y(@^Y(I^Y(M`Y(o`Y) `G  pPqeriodFY).`GY)2 Y)512'
+	DB '45Y)?450Y)H200FY)M`Y)U1Y)Yy{{{{{{{{{{{{{{{Y)o`Y* `G'
+	DB '  pFqrequencyFY*.`GY*1dddd.ddd dddd.ddd dddd.dddFY*M'
+	DB '`Y*Q                         G FY*o`Y+ `G  pAqmplitu'
+	DB 'deFY+.`Y+2 GY+712Y+@15Y+J0FY+M`Y+U2Y+X yxyxyxyxyx'
+	DB 'yxyxyxY+o`Y, `Y,.`Y,2 Y,M`GY,j FY,o`Y- vaaaaaaaaaa'
+	DB 'aaauaaaaaaaaaaaaaaaaaaaaaaaaaaaaaat   Y-U3Y-Yy`zzzzzzzzzzz'
+	DB 'zzzGC F    `Y. `CNGoise pPqeriod:  dd    FY.M`GY'
+	DB '.j FY.o`Y/ vaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaat'
+	DB 'Y/U4Y/Yx`x`x`x`x`x`x`x`Y/o`Y0 `G pFRqGepeat:     1 '
+	DB '       pDqelay:      0  FY0M`GY0j FY0o`Y1 vaaaaaaaa'
+	DB 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaatY1U5Y1Yxzzzzzzzzzzzzz'
+	DB 'zzY1o`Y2 ` GCommands:F                                  '
+	DB '`GY2j FY2o`Y3 `GC           C                     F'
+	DB 'Y3M`Y3U6Y3YxyxyxyxyxyxyxyxyY3o`Y4 `pGY4$Hqear the s'
+	DB 'ound        pWqrite to fileFY4M`GY4W FY4o`Y5 `pG'
+	DB 'Y5$Eqxit the program      pLqoad from fileFY5M`GY5U7'
+	DB 'FY5Yx`{{{{{{{{{{{{{{Y5o`Y6 `Y6M`GY6W  FY6o`Y7 eaaaa'
+	DB 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaauaaaaaaaaaaaaaaaaaaa'
+	DB 'aaaaaaaaaaaaaadGq',0
+	
+	END
+

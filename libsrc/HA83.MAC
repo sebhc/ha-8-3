@@ -1,0 +1,2884 @@
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	HA83.MAC - routines to support the HA-8-3 video/sound
+;	board for the Heathkit H8 computer
+;
+;	Adapted for Software Toolworks C/80 bindings
+;	by Glenn Roberts, May 2022.
+;
+;	These routines are designed to be assembled using
+;	Microsoft MACRO-80 to form a relocateable (.REL)
+;	library file for use with the L80 linker.
+;
+;	Adapted from "Graphics Support Routines for V3.8 
+;	Lucidata Pascal, Copyright (C) 1982 Polybytes (public
+;	released 1988)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+BELL	EQU	7
+NL	EQU	10
+ENL	EQU	NL+80H
+;
+;	Routines in ROM
+;
+$MU66	EQU	18DFH		; unsigned 16 x 16 mulitply
+$DU66	EQU	1846H		; unsigned 16 / 16 divide
+;
+;	PSG Definitions and parameters
+;
+PSGADR	EQU	272Q		; PSG I/O address
+;
+;	Bit masks for enable register
+;
+PS.PBI	EQU	10000000B	; port B input
+PS.PBO	EQU	00000000B	; port B output
+PS.PAI	EQU	01000000B	; port A input
+PS.PAO	EQU	00000000B	; port A output
+PS.ENC	EQU	00100000B	; enable noise on channel C
+PS.DNC	EQU	00000000B	; disable noise on channel C
+PS.ENB	EQU	00010000B	; enable noise on channel B
+PS.DNB	EQU	00000000B	; disable noise on channel B
+PS.ENA	EQU	00001000B	; enable noise on channel A
+PS.DNA	EQU	00000000B	; disable noise on channel A
+PS.ETC	EQU	00000100B	; enable tone on channel C
+PS.DTC	EQU	00000000B	; disable tone on channel C
+PS.ETB	EQU	00000010B	; enable tone on channel B
+PS.DTB	EQU	00000000B	; disable tone on channel B
+PS.ETA	EQU	00000001B	; enable tone on channel A
+PS.DTA	EQU	00000000B	; disable tone on channel A
+;
+;	Bit masks for amplitude control registers
+;
+PS.FLA	EQU	00000000B	; fixed level amplitude
+PS.VLA	EQU	00010000B	; variable level amplitude
+;
+;	Bit masks for envelope control register
+;
+PS.CNT	EQU	00001000B	; continue
+PS.ATT	EQU	00000100B	; attack
+PS.ALT	EQU	00000010B	; alternate
+PS.HLD	EQU	00000001B	; hold
+;
+;	PSG register definitions
+;
+PS.ATF	EQU	0		; channel A tone fine
+PS.ATC	EQU	1		; channel A tone course
+PS.BTF	EQU	2		; channel B tone fine
+PS.BTC	EQU	3		; channel B tone course
+PS.CTF	EQU	4		; channel C tone fine
+PS.CTC	EQU	5		; channel C tone course
+PS.NPR	EQU	6		; noise period register
+PS.ENR	EQU	7		; enable register
+PS.AAR	EQU	8		; channel A amplitude register
+PS.BAR	EQU	9		; channel B amplitude register
+PS.CAR	EQU	10		; channel C amplitude register
+PS.EPF	EQU	11		; envelope period fine
+PS.EPC	EQU	12		; envelope period course
+PS.ECR	EQU	13		; envelope control register
+PS.PAR	EQU	14		; parallel port A
+PS.PBR	EQU	15		; parallel port B
+
+;
+;	Definitions for the TMS-9918 video display processor
+;
+;
+VDPADR	EQU	270Q		; all references to vdp use this address
+;
+;	REGISTERS
+;
+;
+;	External Video Register
+;
+VP.EVR	EQU	0		; external video register
+;
+VP.NEV	EQU	00000000B	; no external video
+VP.EV	EQU	00000001B*256	; enable external video
+VP.G2M	EQU	00000010B*256	; graphics 2 mode (TMS-9918A only)
+;
+;	Option Control Register
+;
+VP.OCR	EQU	1		; option control register
+;
+VP.4K	EQU	00000000B	; 4k RAMs
+VP.16K	EQU	10000000B	; 16k RAMs
+VP.DDP	EQU	00000000B	; blank display
+VP.EDP	EQU	01000000B	; enable display
+VP.DI	EQU	00000000B	; disable interrupts
+VP.EI	EQU	00100000B	; enable interrupts
+VP.PM	EQU	00000000B	; pattern mode
+VP.G1M	EQU	VP.PM		; graphics 1 mode (TMS-9918A only)
+VP.MCM	EQU	00001000B	; multicolor mode
+VP.TM	EQU	00010000B	; text mode
+VP.S0	EQU	00000000B	; size 0 (8x8 bit) sprites
+VP.S1	EQU	00000010B	; size 1 (16x16 bit) sprites
+VP.M0	EQU	00000000B	; magnification 0
+VP.M1	EQU	00000001B	; magnification 1
+;
+;	Name Table Base Address Register
+;
+VP.NTR	EQU	2		; name table base address register
+VP.NTB	EQU	1024		; name table base divisor
+;
+;	Color Table Base Address Register
+;
+VP.CTR	EQU	3		; color table base address register
+VP.CTB	EQU	64		; color table base divisor
+;
+;	Pattern Generator Table Base Address Register
+;
+VP.PGR	EQU	4		; pattern generator table base address register
+VP.PGB	EQU	2048		; pattern generator table base divisor
+;
+;	Sprite Name Table Base Address Register
+;
+VP.SNR	EQU	5		; sprite name table base address register
+VP.SNB	EQU	128		; sprite name table base divisor
+VP.SOF	EQU	208		; sprite terminator flag
+;
+;	Sprite Pattern Generator Base Address Register
+;
+VP.SGR	EQU	6		; sprite pattern generator base address register
+VP.SGB	EQU	2048		; sprite pattern generator base divisor
+;
+;	Text/Backdrop Color Register
+;
+VP.TBR	EQU	7		; text/backdrop color register
+;
+;	Colors
+;
+VC.CLR	EQU	0		; transparent
+VC.BLK	EQU	1		; black
+VC.MGR	EQU	2		; medium green
+VC.LGR	EQU	3		; light green
+VC.DBL	EQU	4		; dark blue
+VC.LBL	EQU	5		; light blue
+VC.DRD	EQU	6		; dark red
+VC.CYN	EQU	7		; cyan
+VC.MRD	EQU	8		; medium red
+VC.LRD	EQU	9		; light red
+VC.DYL	EQU	10		; dark yellow
+VC.LYL	EQU	11		; light yellow
+VC.DGR	EQU	12		; dark green
+VC.MAG	EQU	13		; magenta
+VC.GRY	EQU	14		; gray
+VC.WHT	EQU	15		; white
+VC.LFT	EQU	16		; multiplier for color in left nibble
+;
+;	Status Register
+;
+VP.IF	EQU	10000000B	; interrupt flag
+VP.5S	EQU	01000000B	; fifth sprite flag
+VP.C	EQU	00100000B	; coincidence flag
+VP.FSN	EQU	00011111B	; fifth sprite number mask
+;
+;	Sprite Flags
+;
+VP.EC	EQU	10000000B	; early clock flag
+VP.NEC	EQU	00000000B	; no early clock
+;
+;	Code files
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	PSGIO.MAC - programmable sound generator (PSG) routines
+;
+;	Adapted for Software Toolworks C/80 bindings
+;	by Glenn Roberts, May 2022
+;
+;	Adapted from "Graphics Support Routines for V3.8 
+;	Lucidata Pascal, Copyright (C) 1982 Polybytes (public
+;	released 1988)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+;
+;	A/D port number
+;
+ADADR	EQU	276Q
+
+;
+;	Public routines defined in this module:
+;
+	PUBLIC	TONEFR	; tonefreq()
+	PUBLIC	TONEPE	; toneperiod()
+	PUBLIC	RDTONE	; rdtoneperiod()
+	PUBLIC	NOISEF	; noisefreq()
+	PUBLIC	NOISEP	; noiseperiod()
+	PUBLIC	RDNOIS	; rdnoiseperiod()
+	PUBLIC	PSGOPT	; psgoptions()
+	PUBLIC	RDENAB	; rdenable()
+	PUBLIC	ENVENA	; envenable()
+	PUBLIC	CHANAM	; chanampl()
+	PUBLIC	RDCHAN	; rdchanampl()
+	PUBLIC	ECYCLT	; ecycltime()
+	PUBLIC	ECYCLP	; ecyclperiod()
+	PUBLIC	RDENVP	; rdenvperiod()
+	PUBLIC	ENVSHA	; envshape()
+	PUBLIC	RDENVC	; rdenvcntrl()
+	PUBLIC	WRTPSG	; wrtpsgport()
+	PUBLIC	RDPSGP	; rdpsgport()
+	PUBLIC	RDADCH	; rdadchan()
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	tonefreq(channel,freq)
+;
+;	Set tone frequency
+;
+;	channel is 'A', 'B', or 'C
+;	freq is in Hz
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+TONEFR:	LXI	H,4
+	DAD	SP		; (HL) = channel
+	MOV	A,M		; A = channel
+	PUSH	PSW		; save it...
+	DCX	H
+	MOV	D,M		; hi byte of freq
+	DCX	H		; now point to low byte
+	MOV	E,M		; DE = frequency
+	CALL	PCOMP		; convert freq DE to period HL
+	POP	PSW		; A = channel
+	JMP	PS.WTP		; write tone period and return
+
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	toneperiod(channel,period)
+;
+;	Set tone period
+;
+;	channel is 'A', 'B', or 'C
+;	period is the 12-bit value used to program the PSG. 
+;	Unexpected results will occur if period is outside
+;	of the range [0..4095].
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+TONEPE:	POP	D		; return address
+	POP	H		; HL = tone period
+	POP	B		; C = channel
+	PUSH	B		; fix the stack
+	PUSH	H
+	PUSH	D
+	
+	MOV	A,C		; A = channel; HL = period
+;
+;	PS.WTP - write tone period
+;
+;	Entry:	A =	channel
+;		HL =	tone period (12 bits)
+;
+PS.WTP:	SUI	'A'		; remove ASCII offset
+	ADD	A		; *2 (two registers/tone)
+	MOV	B,A		; B = tone register
+	MOV	A,L		; A = fine value
+	MOV	L,B		; L = tone register
+	CALL	PS.WRR		; write to register
+	MOV	A,H		; get coarse value
+	INR	L		; channel coarse register
+	CALL	PS.WRR		; write to register
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdtoneperiod(channel)
+;
+;	read tone period
+;
+;	Note: original code apparently had errors, see
+;	/GFR/ comment lines
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDTONE:	POP	H		; return address
+	POP	B		; C = channel
+	PUSH	B		; fix the stack
+	PUSH	H
+	
+	MOV	A,C		; Channel = 'A', 'B', or 'C'
+	SUI	'A'		; remove ASCII offet
+	ADD	A		; *2 (two reg's/tone)	/GFR/
+	MOV	C,A		; C = tone register
+
+	MOV	L,C		; register for fine tone
+	CALL	PS.RDR		; read fine tone
+	MOV	E,A		; save it: E = low byte
+	
+	INR	L		; coarse register is next  /GFR/
+	CALL	PS.RDR		; read coarse tone
+	MOV	D,A		; save it: D = hi byte
+
+	XCHG			; HL = tone period
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	noisefreq(freq)
+;
+;	Set center noise frequency
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+NOISEF:	POP	H		; return
+	POP	D		; DE = freq (Hz.)
+	PUSH	D		; fix the stack
+	PUSH	H
+	
+	CALL	PCOMP		; convert freq (DE) to period (HL)
+	MOV	A,L		; only need lower 5 bits
+	JMP	PS.WNP		; write noise period and return
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	noiseperiod(period)
+;
+;	Set noise period
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+NOISEP:	POP	H		; return
+	POP	B		; C = period
+	PUSH	B		; fix the stack
+	PUSH	H
+	MOV	A,C
+;
+;	PS.WNP - Write Noise Period
+;
+;	Entry:	A =	noise period
+;
+;	Uses:	HL
+;
+PS.WNP:	MVI	L,PS.NPR	; noise period register
+	CALL	PS.WRR		; write noise period
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdnoiseperiod()
+;
+;	read noise period value
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDNOIS:	MVI	L,PS.NPR	; noise period register
+	CALL	PS.RDR		; read noise period register
+	MOV	L,A
+	MVI	H,0		; return in HL
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	psgoptions(ena,enb,enc,enna,ennb,ennc)
+;
+;	Write PSG enable register
+;
+;	This procedure is used to control the state of the 
+;	master enable register of the PSG. This register controls
+;	the noise/tone mixers.
+;
+;	All arguments are booleans, where 'TRUE' is any
+;	non-zero value. ena, enb and enc enable	outputs
+;	from tone generators a, b and c respectively.
+;	enna, ennb and ennc are used to connect the noise
+;	generator to channels a, b and c respectively.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+PSGOPT:	LXI	H,12		; point to ena
+	DAD	SP		; (HL) = ena
+	
+	MVI	B,0		; use B to accumulate result
+	MVI	E,00000001B	; use E for sliding bit mask
+	MVI	C,6		; loop over 6 parameters
+
+
+POPT1:	MOV	A,M		; fetch parameter
+	ORA	A		; 'Z' -> FALSE
+	JZ	POPT2		; skip this one
+;
+;	process 'TRUE' parameter
+;
+	MOV	A,E		; bit mask
+	ORA	B		; A = updated result
+	MOV	B,A		; and save it
+	
+POPT2:	MOV	A,E		; get bit mask
+	RLC			; shift left one
+	MOV	E,A		; and save it
+	DCX	H
+	DCX	H		; point to next argument
+	DCR	C		; count down
+	JNZ	POPT1		; loop through all args
+;
+;	B now contains the mask of all the bits to set
+;	now read the current settings, clear all but the
+;	two high bits (parallel port I/O bits) and save
+;	the new Enable Register
+;	
+	CALL	RDEREG		; get enable register contents
+	ANI	PS.PAI+PS.PBI	; save port bits, clear others
+	ORA	B		; set requested bits
+;
+;	PS.WER - Write Enable Register
+;
+PS.WER:	MVI	L,PS.ENR	; enable register
+	CMA			; values stored as complements
+	CALL	PS.WRR		; write enable values
+	CMA			; undo complement
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdenable()
+;
+;	Read enable register value
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDENAB:	CALL	RDEREG		; A = enable register value
+	MOV	L,A		; Return result in HL
+	MVI	H,0
+	RET
+;
+;	Read enable register
+;
+;	Exit:	A =	Enable register value (non complemented)
+;
+RDEREG:	MVI	L,PS.ENR	; enable register
+	CALL	PS.RDR		; read enable register
+	CMA			; bits are stored as complements
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	envenable(channel)
+;
+;	Enable envelope control
+;
+;	Channel is 'A', 'B', or 'C'
+;
+;	This routine sets the 'variable level amplitude'
+;	bit, which allows the envelope generator to manage
+;	channel volume.  Essentially this serves as an
+;	'envelope enable' bit.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ENVENA:	POP	H		; return
+	POP	B		; C = channel
+	PUSH	B		; restore stack
+	PUSH	H
+	
+	MOV	A,C		; A = channel
+	MVI	C,PS.VLA	; set variable level amplitude
+	CALL	PS.WAA		; write it
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	chanampl(channel,amplitude)
+;
+;	Write channel amplitude
+;
+;	Channel is 'A', 'B', or 'C'
+;
+;	Here we take explicit control of channel volume.
+;	The amplitude mode is set to 'fixed', disabling
+;	envelope control of amplitude.
+;	registers:
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CHANAM:	POP	H		; return address
+	POP	B		; C = amplitude
+	POP	D		; E = channel
+	PUSH	D		; fix the stack...
+	PUSH	B
+	PUSH	H
+	
+	MOV	A,C		; get amplitude
+	ANI	00001111B	; truncate & set fixed level
+	MOV	C,A		; amplitude adjusted
+	
+	MOV	A,E		; get channel
+;
+;	PS.WAA - write amplitude
+;
+;	Entry:	A = channel ('A', 'B', or 'C')
+;		C = amplitude
+;
+PS.WAA:	SUI	'A'		; remove ASCII bias
+	ADI	PS.AAR		; base of amplitude registers
+	MOV	L,A		; L = register
+	MOV	A,C		; A = amplitude
+	CALL	PS.WRR		; write to register
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdchanampl(channel)
+;
+;	Read channel amplitude
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDCHAN:	POP	H		; return
+	POP	B		; C = channel
+	PUSH	B		; fix the stack
+	PUSH	H
+	
+	MOV	A,C		; Channel 'A', 'B', or 'C'
+	SUI	'A'		; remove ASCII bias
+	ADI	PS.AAR		; A = channel amplitude register
+	MOV	L,A
+	CALL	PS.RDR		; read amplitude
+	MOV	L,A
+	MVI	H,0		; return in HL
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	ecycltime(time)
+;
+;	Set envelope cycle time
+;
+;	time is the amount of time between repeating
+;	cycles of the envelope generator measured in
+;	tenths of a second
+;
+;	From AY-3-8910 documentation:
+;
+;	time = cycle time in tenths of a sec.
+;	Fclock = 'color burst' freq/2
+;	Fclock = 1.7897725 * 10^6
+;	EP = Envelope Period = time * Fclock/(256*10)
+;	EP = time * 699.12988 (round to 699.1)
+;
+;	To minimize distortion arithmetic is done to
+;	four significant digits.
+;
+;	/GFR/ - note: Lucidata code used 669.1 but based
+;	on above analysis, I believe 699.1 is correct.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ECYCLT:	POP	H		; return address
+	POP	B		; BC = time (1/10 sec.)
+	PUSH	B		; fix the stack...
+	PUSH	H
+
+	PUSH	B		; save tenths of seconds (ts)
+	LXI	D,699
+	CALL	$MU66		; HL = BC * DE = ts * 699
+	POP	B		; get ts back
+	PUSH	H		; save 699*ts
+	LXI	DE,10		;  div 10
+	CALL	$DU66		; (HL) = (BC)/(DE) = 0.1 * ts
+	POP	D		; DE = 699*ts
+	DAD	D		; HL = 699.1*ts
+	CALL	PS.WEP		; write it!
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	ecyclperiod(period)
+;
+;	Write envelope period
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ECYCLP:	POP	D		; return address
+	POP	H		; HL = period
+	PUSH	H		; fix the stack...
+	PUSH	D
+	
+;
+;	PS.WEP - Write Envelope Period
+;
+;	Entry:	HL = period
+;
+PS.WEP:	MOV	A,L		; envelope period fine value
+	MVI	L,PS.EPF	; envelope period fine register
+	CALL	PS.WRR		; write fine value
+	MOV	A,H		; envelope period coarse value
+	MVI	L,PS.EPC	; envelope period coarse register
+	CALL	PS.WRR		; write coarse value
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdenvperiod()
+;
+;	read envelope period register
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDENVP:	MVI	L,PS.EPC	; envelope period coarse register
+	CALL	PS.RDR		; read coarse value
+	MOV	D,A		; store in register D
+	MVI	L,PS.EPF	; envelope period fine register
+	CALL	PS.RDR		; read fine value
+	MOV	E,A		; store in register E
+	XCHG			; return result in HL
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	envshape(shape)
+;
+;	Write envelope shape
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ENVSHA:	POP	H		; return address
+	POP	B		; C = shape
+	PUSH	B		; fix the stack...
+	PUSH	H
+	
+	MOV	A,C		; A = shape
+	ANI	00001111B	; only low 4 bits needed
+	ORI	PS.CNT		; set 'continue' mode
+;
+;	PS.WEC - write envelope control
+;	
+PS.WEC:	MVI	L,PS.ECR	; envelope control register
+	CALL	PS.WRR		; write envelope control register
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdenvcntrl()
+;
+;	Read envelope control register
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDENVC:	MVI	L,PS.ECR	; envelope control register
+	CALL	PS.RDR		; read envelope control register
+	MOV	L,A		; return result in HL
+	MVI	H,0
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	wrtpsgport(port,data)
+;
+;	Write to PSG parallel port
+;
+;	Port is 'A' or 'B'
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+WRTPSG:	POP	H		; return address
+	POP	D		; E = data
+	POP	B		; C = port
+	PUSH	B		; fix the stack...
+	PUSH	D
+	PUSH	H
+	
+	MOV	A,C		; get port ('A' or 'B')
+	SUI	'A'		; remove ASCII bias
+	ADI	1		; make 'A'=1, 'B'=2
+	ANI	3		; clear all other bits
+	RAR			; move ls 2 bits into ms 2 bits
+	RAR			; Bit 6 = IOA, bit 7 = IOB
+	RAR
+	CMA			; prepare mask
+	MOV	B,A
+	CALL	RDEREG		; A = enable register contents
+	ANA	B		; program port directions
+	CALL	PS.WER		; write out new enable register
+
+	MOV	A,C		; restore channel argument
+	SUI	'A'		; remove ASCII bias
+	ADI	PS.PAR		; base for parallel port reg's
+	MOV	L,A		; L = register
+	MOV	A,E		; A = data value
+	CALL	PS.WRR		; write to register
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdpsgport(port)
+;
+;	read PSG parallel port
+;
+;	Port is 'A' or 'B'
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDPSGP:	POP	H		; return address
+	POP	B		; C = port
+	PUSH	B		; fix the stack...
+	PUSH	H
+	
+	MOV	A,C		; port
+	SUI	'A'		; remove ASCII bias
+	ADI	1		; make 'A'=1, 'B'=2
+	ANI	3		; clear all other bits
+	RAR			; move ls 2 bits into ms 2 bits
+	RAR			; Bit 6 = IOA, bit 7 = IOB
+	RAR
+	MOV	B,A		; save mask
+	CALL	RDEREG		; get enable register
+	ORA	B		; set bits
+	CALL	PS.WER		; program register
+	
+	MOV	A,C		; restore channel descriptor
+	SUI	'A'		; remove ASCII bias
+	ADI	PS.PAR		; base for parallel port reg's
+	MOV	L,A
+	CALL	PS.RDR		; read port
+	MOV	L,A		; return in HL
+	MVI	H,0
+	RET
+
+;
+;	PCOMP - Compute period from frequency
+;
+;	Assuming the PSG is being driven by a 3.579545 Mhz
+;	'color burst' clock, the PSG clock is half that, or
+;	1.7897725 Mhz. This is internally divided by 16, 
+;	yielding a value of 111860.78 which is rounded to
+;	111861. This is too large to fit into a 16-bit register
+;	but it is evenly divisible by three, so:
+;
+;	p = 111861/f   becomes   p = (37287/f) * 3
+;
+;	To minimize distortion we should round, not truncate,
+;	so the remainder is saved and used to properly round
+;	the result.
+;
+;	Entry:	DE = 	16-bit frequency value (f)
+;
+;	Exit:	HL =	period (p)
+;
+PCOMP:	LXI	B,37287		; p=(37287/f)*3
+	PUSH	D		; save f
+	CALL	$DU66		; (HL) = (BC)/(DE) = 37287/f
+	MOV	B,H		; save copy in BC
+	MOV	C,L
+	DAD	H		; *2
+	DAD	B		; *3 
+	MOV	B,H
+	MOV	C,L		; save result in BC
+;
+;	BC is our tentative result, but we must check
+;	for possible round up.
+;
+	MOV	H,D		; multiply DE remainder by 3
+	MOV	L,E
+	DAD	H
+	DAD	D
+	DAD	H		; HL = remainder * 3
+	POP	D		; DE = frequency (f)
+	CALL	RNDP		; if remainder*3 >= f then round up
+	
+	MOV	H,B		; return final result
+	MOV	L,C
+	RET
+
+;
+;	RNDP -- Round period
+;
+;	if HL >= DE then increment BC
+;
+RNDP:	MOV	A,H
+	CMP	D
+	RC			; D > H, no rounding needed
+	JNZ	RNDP2		; jump if D < H (rounding needed)
+	MOV	A,L		; D == H, now check lower byte
+	CMP	E
+	RC			; E > L, no rounding needed
+RNDP2:	INX	B		; E <= L, round up by one
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdadchan(channel)
+;
+;	Read analog-to-digital channel
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDADCH:	POP	H		; return
+	POP	B		; C = channel
+	PUSH	B		; repair the stack
+	PUSH	H
+	
+	MOV	A,C		; A = channel to be read
+	OUT	ADADR		; write to multiplexor
+;
+;	Give mux time to switch and op-amp time to slew (35 microseconds)
+;
+;	Timed for 4mhz. slow clocks will waste some usecs.
+;
+;
+	MVI	A,9		; loop const (2.5 microseconds)
+DLOOP:	DCR	A		; 1.25 microseconds
+	JNZ	DLOOP		; 2.5 microseconds
+
+	IN	ADADR		; read value from a/d
+	MOV	L,A		; A/D output value [0..255]
+	MVI	H,0		; returned in HL
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=
+;	PSG I/O routines
+; =-=-=-=-=-=-=-=-=-=-=-=-=
+
+; -------------------------------------
+;
+;	PS.WRR - write to PSG register
+;
+;	Entry:	L = Register to be written
+;		A = Byte to be written
+;
+PS.WRR:	PUSH	PSW		; save a
+	MOV	A,L		; get register number to be written
+	OUT	PSGADR+1	; write register number
+	POP	PSW		; get byte to be written
+	OUT	PSGADR		; write to PSG
+	RET			; return to caller
+
+; -------------------------------------
+;
+;	PS.RDR - read from PSG register
+;
+;	Entry:	L = Register to be read
+;
+;	Exit:	A = Register contents
+;
+PS.RDR:	MOV	A,L		; get register to be read
+	OUT	PSGADR+1	; write register number
+	IN	PSGADR+1	; read from register
+	RET			; return to caller
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	VDPIO.MAC
+;
+;	Video Display Processor (VDP) support routines for
+;	the HA-8-3 with Texas Instruments TMS9918A/TMS9928A.
+;
+;	Adapted for Software Toolworks C/80 bindings
+;
+;	Adapted from "Graphics Support Routines for V3.8 
+;	Lucidata Pascal, Copyright (C) 1982 Polybytes (public
+;	released 1988)
+;
+;	by Glenn Roberts, May 2022
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;
+;	Public routines defined in this module:
+;
+	PUBLIC	VRAMAL	; vramallocate()
+	PUBLIC	INITMC	; initmcmode()
+	PUBLIC	INITG2	; initg2mode()
+	PUBLIC	MCMOVE	; mcmove()
+	PUBLIC	MOVE	; move()
+	PUBLIC	MCDRAW	; mcdraw()
+	PUBLIC	DRAW	; draw()
+	PUBLIC	ERASER	; eraser()
+	PUBLIC	COLORS	; colorset()
+	PUBLIC	AREAFI	; areafill()
+	PUBLIC	MCFILL	; mcfill()
+	PUBLIC	AREACL	; areaclear()
+	PUBLIC	RDPIXE	; rdpixel()
+	PUBLIC	VDPSTA	; vdpstatus()
+	PUBLIC	VDPOPT	; vdpoptions()
+	PUBLIC	PATTNA	; pattnametable()
+	PUBLIC	COLGEN	; colgentable()
+	PUBLIC	PATTGE	; pattgentable()
+	PUBLIC	SPRNAM	; sprnametable()
+	PUBLIC	SPRPAT	; sprpatrntable()
+	PUBLIC	BORDER	; bordercolor()
+	PUBLIC	BLOCKW	; blockwrite()
+	PUBLIC	BLOCKR	; blockread()
+	PUBLIC	WRTVRA	; wrtvramdirect()
+	PUBLIC	RDVRAM
+	PUBLIC	COMPMO	; compmode()
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+; 	vramallocate()
+;
+; 	Allocate video RAM tables as follows:
+;
+; 	     0 -- Pattern Generator Table
+;	   6144 -- Pattern Name Table
+;	   7168 -- Sprite Attribute Table
+;	   8192 -- Pattern Color Table (Graphics 2 only)
+;	  14336 -- Sprite Generator Table
+;
+; 	Also initialize VDP as follows:
+;
+;	Pattern mode (graphics 1)
+;	Black background
+;	Display disabled
+;	Small sprites with no magnification
+;	Sprite name table disabled
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+VRAMAL:	LXI	H,VP.DI+VP.DDP+VP.16K+VP.G1M
+	MVI	B,VC.BLK	; background
+;
+;	ALLOCAT
+;
+;	Initialize all options including standard
+;	VRAM setup
+;
+;	Entry:	HL =	options for registers 0 & 1
+;		B = 	background color
+;
+ALLOCAT:CALL	VP.SOP		; set options
+;
+;	Set up VRAM address registers
+;
+	LXI	H,1024*6	; set pat name table address
+	CALL	VP.SPN
+	LXI	H,0		; set pattern gen table address
+	CALL	VP.SPG
+	LXI	H,1024*8	; set color generator table address
+	CALL	VP.SCG
+	LXI	H,1024*7	; set sprite attribute table address
+	CALL	VP.SSN
+	LXI	H,1024*14	; set sprite generator table address
+	CALL	VP.SSG
+;
+;	Set background color
+;
+	MOV	A,B		; get backdrop color
+	CALL	VP.STB		; set it
+;
+;	Disable sprites
+;
+	LXI	H,1024*7	; disable sprites
+	LXI	D,4		; 4 bytes/entry
+	MVI	C,32		; all 32 of them
+CLRLP:	MVI	A,0D0H		; disable code
+	CALL	VP.WVD
+	DAD	D		; +4 = next entry
+	DCR	C
+	JNZ	CLRLP
+
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+; 	initg2mode(bg, mag, size, color0, color1)
+;
+; 	Initialize VDP for plotting in graphics 2 mode
+;
+;	bg = background color
+;	mag = 1 for double-pixel sprites, 0 for normal
+;	size = 0 for 8x8 sprites; 1 for 16x16
+;	color0 = color for off pixels
+;	color1 = color for on pixels
+;
+;	Allocate VRAM and initialize the VDP to
+;	graphics 2 mode pllotting. Cancels the actions
+;	of vralloc().
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+INITG2:	LXI	H,10		; point to bg
+	DAD	SP
+	MOV	B,M		; B = bg
+	DCX	H
+	DCX	H		; (HL) = mag
+	MOV	D,M		; D = mag
+	DCX	H
+	DCX	H		; (HL) = size
+	MOV	A,M		; H = size
+	DCX	H
+	DCX	H		; (HL) = color0
+	MVI	E,0		; clear mc mode
+	MVI	C,2		; flag g2 mode
+	JMP	VDIN2
+	
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	initmcmode(bg, mag, size)
+;
+;	Initialize VDP for plotting in multicolor mode
+;
+;	bg = background color
+;	mag = 1 for double-pixel sprites, 0 for normal
+;	size = 0 for 8x8 sprites; 1 for 16x16
+;
+;	Allocate VRAM and initialize the VDP to
+;	multicolor mode plotting. Cancels the actions
+;	of vralloc().
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+INITMC:	LXI	H,6		; point to bg
+	DAD	SP		; HL = stack pointer
+	MOV	B,M		; B = bg
+	DCX	H
+	DCX	H		; (HL) = mag
+	MOV	D,M		; D = mag
+	DCX	H
+	DCX	H		; (HL) = size
+	MOV	A,M		; H = size
+	MVI	E,VP.MCM	; flag mc mode
+	MVI	C,0		; clear g2 mode
+	
+;
+;	VDIN2 - shared initialization code for both 
+;		graphics2 and multicolor modes.
+;	
+;	Entry:	B = background color
+;		E = VP.MCM if mc mode, else 0
+;		C = 2 if g2 mode, else 0
+;		D = mag, 0 for small sprites 1 for large
+;		A = size, 0 for 8x8, 1 for 16x16
+;		(HL) = color0 (if g2 mode)
+;
+VDIN2:	PUSH	H		; (HL) = color0 (needed if g2 mode)
+;
+;	Set up options word in HL
+;
+	ADD	A		; shift (size is in bit 1)
+	ORA	D		; set mag bit 0 = 0 or 1
+	ORA	E		; set mc bit (bit 3)
+	ORI	VP.DI+VP.DDP+VP.16K 	; set other options
+	MOV	L,A		; L = lower 8 bits of options
+	MOV	H,C		; H = g2 flag (if set)
+	PUSH	HL
+	CALL	ALLOCAT		; set options & allocate VRAM
+
+	POP	HL		; get argument pointer back
+	MOV	A,H		; get g2 flag
+	STA	PLOTMD
+	ORA	A		; is it g2 mode?
+	POP	H		; (HL) = color0 if g2 mode
+	JNZ	G2MINIT		; yes
+;
+;	Multi-color Mode - complete initialization steps
+;	for mc mode.
+;
+;	initialize pattern generator table
+;
+;	in multicolor mode the pattern generator table
+;	determines the color of each 8x8 bit multicolor
+;	pattern. there are 32 x 24 such 8x8 bit patterns
+;	and each one  has two bytes (4 nibbles) describing
+;	the color. this lets you break each 8x8 pattern
+;	into 4 4x4 patterns, effectively giving you a
+;	64x48 space, each 4x4 pattern having any desired color.
+;	there are 64x48 nibbles in the table = 1536 bytes
+;
+	LHLD	VP.PGT		; get pat gen table address
+	CALL	VP.SWA
+	LXI	BC,8*192	; number of bytes to write
+	MVI	A,VC.CLR*VC.LFT+VC.CLR	; initialize to transparent
+;
+;	pattern generator table loop
+;
+MCLP1:	OUT	VDPADR		; write clear to screen
+	DCR	C		; loop
+	JNZ	MCLP1
+	DCR	B		; 8*192 times
+	JNZ	MCLP1
+;
+;	initialize pat name table
+;
+	LHLD	VP.PNT		; get address of pat name table
+	CALL	VP.SWA		; start writing here
+
+	MVI	D,6		; 6 blocks
+	XRA	A		; first pattern name is 0
+MCLP01:MVI	B,4		; 4 rows
+;
+;	loop for 6 blocks
+;
+MCLP02:PUSH	PSW		; save starting entry
+;
+;	loop for 4 rows per block
+;
+	MVI	C,32		; 32 columns
+MCLP2:	OUT	VDPADR		; write name to VRAM
+;
+;	loop for 32 columns per row
+;
+	INR	A		; next pat name
+	DCR	C		; count column
+	JNZ	MCLP2		; loop for column
+
+	POP	PSW		; restore back to 1st column
+	DCR	B		; count 1 row in this block
+	JNZ	MCLP02		; loop for row
+
+	ADI	32		; 1st name in next block
+	DCR	D		; count 1 block
+	JNZ	MCLP01		; loop for block
+
+DSPON:	LHLD	VP.OPT		; get vdp options
+	MOV	A,L		; get option setting
+	ORI	VP.EDP		; enable display
+	MOV	L,A
+	CALL	VP.SOP
+
+	RET
+
+;
+;	initialize g2 mode
+;
+;	Entry:	(HL) = color0 parameter from call
+;
+;	here color0 and color1 are used for all positions
+;	in the screen.
+;
+
+G2MINIT:MOV	D,M		; D = color0
+	DCX	H
+	DCX	H		; (HL) = color1
+	MOV	E,M		; E = color1
+	
+	MVI	A,3		; re-do pat gen address for g2
+	MVI	L,VP.PGR	; pattern generator table
+	CALL	VP.WRR		; write register
+	MVI	A,0FFH		; re-do color gen address for g2
+	MVI	L,VP.CTR	; color table base address register
+	CALL	VP.WRR		; write register
+	
+	MOV	A,D		; A = color0
+	ANI	00001111B	; mask off color nibble
+	MOV	B,A		; save
+	MOV	A,E		; A = color1
+	ADD	A		; shift into high nibble
+	ADD	A
+	ADD	A
+	ADD	A
+	ADD	B		; color1 in hi nibble, color0 in low
+
+	MOV	D,A		; position for table fill
+	LHLD	VP.CGT		; get color gen table address
+	CALL	G2FILL		; fill it
+	
+	MOV	D,B		; move a 0 into fill position
+	MOV	H,B		; get pattern gen table address
+	MOV	L,B
+	CALL	G2FILL		; fill with 0's
+	LHLD	VP.PNT		; get pat name table address
+	CALL	VP.SWA		; get address ready for write to VRAM
+	MVI	C,3		; fill 3-256 byte tables
+	XRA	A		; start with name 0
+G2PNFL:	CALL	VPWRITE		; send name to table
+	INR	A		; increment name
+	JNZ	G2PNFL
+	DCR	C		; decrement page count
+	JNZ	G2PNFL
+	JMP	DSPON		; enable display and return
+
+G2FILL:	CALL	VP.SWA		; set write address
+	LXI	B,6144		; write 6144 bytes
+	
+G2FP1:	MOV	A,D		; get byte to move
+	CALL	VPWRITE		; send to VRAM
+	DCX	B
+	MOV	A,B		; see if done
+	ORA	C
+	JNZ	G2FP1
+	RET
+
+;
+;	MCPLOT - place (color) at the (x,y) coordinate (D,E)
+;
+;		registers:
+;
+;			D:	x-coordinate (0-63)
+;			E:	y-coordinate (0-47)
+;
+;
+MCPLOT:	LDA	COLOR
+;
+;	compute color nibble and mask
+;
+	MVI	C,11110000B	; assume changing right nibble
+	MOV	B,A		; save color
+	MOV	A,D		; get x-coordinate
+	ORA	A		; clear carry
+	RAR			; divide by 2
+	MOV	A,B		; restore color
+	JC	MC.LBL1		; jump if changing right nibble
+	RLC
+	RLC
+	RLC
+	RLC
+	MVI	C,00001111B	; set up to change left nibble
+	
+MC.LBL1:MOV	B,A		; save color
+	PUSH	BC		; save color and mask on stack
+	CALL	MCPXRD		; read affected byte from VRAM
+	POP	BC		; restore color and mask
+	ANA	C		; turn off all selected bits
+	ORA	B		; or in color bits
+	CALL	VP.WVD		; write new color
+
+	RET
+
+;
+;
+;	read byte from mc plot
+;
+;	DE = x,y
+;
+
+MCPXRD:	MOV	A,D		; get x
+	ORA	A		; clear carry
+	RAR			; x div 2 to H
+	MOV	H,A
+	MOV	A,E		; get column offset
+	ANI	00000111B	; get low order 3 bits
+	MOV	C,A		; store then in C
+	MVI	B,0		; clear B
+	PUSH	BC		; stack final offset
+;
+;	get pat name corresponding to the point (H,L)
+;
+	MOV	A,E		; get row index
+	RAR			; divide by 2
+	MOV	L,A		; and return to L
+	MOV	C,H		; save column offset in BC
+	MOV	H,B		; clear H
+	DAD	HL		; row * 2
+	DAD	HL		; row * 4
+	DAD	HL		; row * 8
+	DAD	HL		; row * 16
+	DAD	HL		; row * 32
+	DAD	BC		; (row * 32) + column
+	XCHG			; save offset in DE
+	LHLD	VP.PNT		; get base address of pat name table
+	DAD	DE		; add in offset
+	CALL	VP.RVD		; read pat name table entry for point (H,L)
+;
+;	get base address of pattern for this name
+;
+	MOV	H,B		; clear H
+	MOV	L,A		; pick up pat name
+	DAD	HL		; name * 2
+	DAD	HL		; name * 4
+	DAD	HL		; name * 8
+	XCHG			; save pattern offset in DE
+	LHLD	VP.PGT		; pick up base address of patterns
+	DAD	DE		; add in pattern offset
+;
+;	compute byte in pattern
+;
+	POP	BC		; get final offset
+	DAD	BC		; add to base address for this pattern
+;
+;	read pattern byte
+;
+	JMP	VP.RVD		; read old pattern byte
+;	RET
+
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	mcdraw(x,y,color)
+;
+;	Draw a line in multicolor mode from the last
+;	referenced point to (x,y) using the specified
+;	color. Line is drawn using the smallest defineable
+;	screen units.
+;
+;	save x,y in DE pair and store color in COLOR,
+;	then call drawing routine.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+MCDRAW:	POP	H		; return
+	POP	D		; E = color
+	MOV	A,E		; A = color
+	STA	COLOR		; save it
+	POP	D		; E = y
+	POP	B		; C = x
+	MOV	D,C		; D = x
+	PUSH	B		; fix the stack
+	PUSH	D		; don't care that these
+	PUSH	D		; are changed... 
+	PUSH	H
+
+	CALL	DRWXY
+	RET
+	
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	draw(x,y)
+;
+;	Draw a line in g2 mode from the last referenced
+;	point to (x,y). Line thickness will be one pixel
+;	with color being set to color0 or color1, depending
+;	upon the current plotting mode and the values of
+;	eraser and complement bytes. See 'eraser' and
+;	'compmode' routines. 
+;
+;	save x,y in DE pair, then call drawing routine.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+DRAW:	POP	H		; return
+	POP	D		; E = y
+	POP	B		; C = x
+	MOV	D,C		; D = x
+	PUSH	B		; fix the stack
+	PUSH	D
+	PUSH	H
+
+	CALL	DRWXY
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	mcmove(x,y,color)
+;
+;	Turn on the smallest defineable screen area in
+;	multicolor mode.
+;
+;	save x,y in DE pair and store color in COLOR,
+;	then call plotting routine.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+MCMOVE:	POP	H		; return
+	POP	D		; E = color
+	MOV	A,E		; A = color
+	STA	COLOR		; save it
+	POP	D		; E = y
+	POP	B		; C = x
+	MOV	D,C		; D = x
+	PUSH	B		; fix the stack
+	PUSH	D		; don't care that these
+	PUSH	D		; are changed... 
+	PUSH	H	
+
+	CALL	PLOTXY
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	move(x,y)
+;
+;	Turn a pixel on or off in graphics 2 mode. The
+;	final state of the pixel depends on the current
+;	plotting mode and the values of eraser and
+;	complement bytes. See 'eraser' and 'compmode'
+;	routines.
+;
+;	save x,y in DE pair, then call plotting routine.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+MOVE:	POP	H		; return
+	POP	D		; E = y
+	POP	B		; C = x
+	MOV	D,C		; D = x
+	PUSH	B		; fix the stack
+	PUSH	D
+	PUSH	H
+
+	CALL	PLOTXY
+	RET
+	
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	eraser(e)
+;
+;	Turns on (e TRUE) or off (e FALSE) line and point
+;	erasing when plotting in Graphics 2 mode. When 
+;	erasing is on, pixels addressed by the move and
+;	draw procedures will be set to the color0 color.
+;	When erasing is off, pixels will be set to the
+;	color1 color. Erasing mode is off at the beginning
+;	of program execution. 
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ERASER:	POP	HL		; return address
+	POP	BC		; C = erase mode (boolean)
+	PUSH	BC		; now fix the stack...
+	PUSH	HL
+	
+	MOV	A,C		; get the boolean argument
+	STA	ERAMODE
+	
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	compmode(c);
+;
+;	Turns on (complement TRUE) or off (complement FALSE)
+;	complement mode plotting in Graphics 2 mode. When
+;	complement mode is on, pixels addressed by the move
+;	and draw procedures will be set to the opposite of
+;	their current color, i.e. color0 becomes color1 and
+;	color1 becomes color0. A line drawn through a figure
+;	in complement mode can be erased by re-drawing it in
+;	complement mode, without leaving a trail of 'erased'
+;	pixels through the figure. Complement mode is off at
+;	the beginning of program execution.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+COMPMO:	POP	H		; return address
+	POP	B		; C = complement (boolean)
+	PUSH	B		; now fix the stack...
+	PUSH	H
+	
+	MOV	A,C		; get the boolean argument
+	ORA	A
+	MVI	A,0		; set normal mode
+	JZ	STLNS		; set set mode
+	
+	MVI	A,1		; set comp mode
+STLNS:	STA	CMPMODE		; save in line mode byte
+	RET
+
+;
+;	get x, y, and color (if mc mode)
+;
+GETXYC:	MOV	D,C		; get x
+	MOV	A,H		; get color for any mode
+	STA	COLOR
+	RET
+
+; =========================================================
+;
+;	PLOTXY - plot a single point by turning on or off
+;		the smallest defineable screen area, depending
+;		on plot mode
+;
+;	Entry:	D = x
+;		E = y
+;		COLOR contains plotting color (for mc mode)
+;
+PLOTXY:	MOV	A,D		; save x and y
+	STA	XLOC
+	MOV	A,E
+	STA	YLOC
+PLOTDE:	LDA	PLOTMD		; determine plotting mode
+	ORA	A		; zero for mc, otherwise g2
+	JZ	MCPLOT
+;
+;	g2 mode
+;
+	MVI	B,0
+	MOV	A,E
+	ANI	7
+	MOV	L,A
+	MOV	A,D
+	ANI	11111000B
+	ORA	L
+	OUT	VDPADR+1	; low order VRAM address
+	MOV	L,A
+	MOV	A,E
+	ANI	11111000B
+	RAR
+	RAR
+	RAR
+	OUT	VDPADR+1	; high order VRAM address
+	MOV	H,A
+	PUSH	H
+	LXI	H,BITTAB
+	MOV	A,D
+	ANI	7
+	MOV	C,A
+	DAD	B
+	MOV	C,M		; set up mask
+	POP	H
+	LDA	CMPMODE		; check if complement mode
+	ORA	A		; 'NZ' -> complement mode
+	IN	VDPADR		; read 8 pixels
+	JZ	PCMP1		; compmode = FALSE, jump
+	XRA	C		; XOR for complement mode
+	JMP	PNEXT
+PCMP1:	ORA	C		; OR in non-complement mode
+
+
+PNEXT:	MOV	B,A		; save new byte
+	LDA	ERAMODE		; see if erasing
+	ORA	A
+	JZ	WRTBYT		; no, write out new byte
+;
+;	erasing mode...
+;
+	MOV	A,C		; get mask
+	CMA			; make erase mask
+	ANA	B		; mask off bit
+	MOV	B,A
+	
+WRTBYT:	MOV	A,L
+	OUT	VDPADR+1
+	MOV	A,H
+	ORI	01000000B
+	OUT	VDPADR+1
+	MOV	A,B
+	OUT	VDPADR
+	
+	RET
+	
+; =========================================================
+;
+;	DRWXY - vector routine
+;
+;	This vector routine is a very loose translation from
+;	a letter that appeared in Byte Magazine, Vol. 6, No. 5,
+;	May 1981 by William A. McWorter Jr., Mathematics Department
+;	Ohio State University.
+;
+;	https://archive.org/details/byte-magazine-1981-05/page/n15/mode/2up
+;
+;	McWorter traces this algorithm to Fred G. Stockton, Algorithm #162
+;	in Collected Algorithms from ACM, 1963
+;
+;	https://dl.acm.org/doi/pdf/10.1145/366349.366436
+;
+;	it could be worth comparing this to Bresenham's algorithm, which is
+;	widely used for line drawing on raster displays.
+;
+;	https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+;
+;	DE = (x,y)
+;
+;	COLOR = color (for mc mode)
+;
+
+DRWXY:	PUSH	D
+;
+;	compute delta x
+;
+	LDA	XLOC
+	MOV	B,A		; B = previous X
+	MOV	A,D		; A = new x
+	SUB	B		; A = new - old
+	MOV	L,A
+	MVI	H,0		; HL = new - old
+	JNC	DRAW2
+	DCR	H		; if negative..
+;
+;	compute delta y
+;
+DRAW2:	LDA	YLOC
+	MOV	B,A		; B = previous y
+	MOV	A,E		; A = new hy
+	SUB	B		; A = new - old
+	MOV	E,A
+	MVI	D,0		; DE = new - old
+	JNC	DRAW4
+	DCR	D		; if negative...
+;
+;	HL = delta X, DE = delta Y
+;
+DRAW4:	LXI	B,0		; initialize i
+	MOV	A,H		; check sign of x
+	ORA	A
+	JP	DRAW6		; if x<0
+	MOV	A,L		; then
+	CMA			; x=-x
+	INR	A
+	MOV	L,A
+	MVI	C,4		; i=3
+	
+DRAW6:	MOV	A,D		; check sign of y
+	ORA	A
+	JP	DRAW8		; if y<0
+	MOV	A,E		; then
+	CMA
+	INR	A
+	MOV	E,A		; y=-y
+	MVI	A,8		; i=i+4
+	ADD	C
+	MOV	C,A
+	
+DRAW8:	MOV	A,L
+	CMP	E
+	JNC	DRAW10		; if x<y
+	XCHG			; then xchg x,y
+	MVI	A,16		; i=i+8
+	ADD	C
+	MOV	C,A
+	
+DRAW10:	MOV	D,L		; position x
+	LXI	H,A$.TBL	; compute table address
+	DAD	B
+	MOV	A,D		; B=-x/2
+	ORA	A
+	RAR
+	CMA
+	MOV	C,A
+	MVI	B,-1
+	INX	B
+	XRA	A		; set up count
+	STA	COUNT
+	
+DRAWLP:	PUSH	HL		; save table pointer
+	CMP	D		; if count >= x then done
+	JNC	DRAWEX
+	MOV	A,E		; e=e+y
+	ADD	C
+	MOV	C,A
+	MOV	A,B
+	ACI	0
+	MOV	B,A
+	JM	DRAWL2		; if e>0
+	ORA	C
+	JZ	DRAWL2		; then
+	INX	H		; increment table pointer
+	INX	H
+	MOV	A,C		; e=e-x
+	SUB	D
+	MOV	C,A
+	JNC	DRAWL2
+	DCR	B
+	
+DRAWL2:	PUSH	B
+	PUSH	D
+	LDA	XLOC		; get next point
+	ADD	M
+	STA	XLOC
+	MOV	D,A
+	LDA	YLOC
+	INX	H
+	ADD	M
+	STA	YLOC
+	MOV	E,A
+	CALL	PLOTDE		; plot it
+	POP	D
+	POP	B
+	POP	H
+	LDA	COUNT		; increment dot counter
+	INR	A
+	STA	COUNT
+	JMP	DRAWLP
+DRAWEX:	POP	HL		; clear stack
+	POP	D		; get new x and y
+	JMP	PLOTXY		; plot x,y and return
+
+
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	colorset(xmin,xmax,ymin,ymax,color0,color1);
+;
+;	set g2 color bytes
+;
+;	This procedure defines the two colors that will be
+;	used for an area of the screen when plotting in
+;	Graphics 2 mode. All pixels within the bounds of the
+;	area defined by xmin, xmax, ymin and ymax will be
+;	affected by this procedure. In addition, because of
+;	the method used by the VDP for color definition in
+;	Graphics 2 mode, some areas to the left and right of
+;	the defined area may be affected.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+COLORS:	LXI	H,12		; point to xmin
+	DAD	SP		; (HL) = x
+	
+	LXI	D,XSAVE		; (DE) = saved x
+	CALL	G2CMAX		; get xcount*8
+	JNZ	G2CO0		; watch out for 256 count
+	DCR	A		; 255 is good enough
+	
+G2CO0:	ANI	11111000B	; xcount = xcount/8 + 1
+	RAR
+	RAR
+	RAR
+	INR	A
+	STA	XCOUNT
+;
+;	now do y
+;
+	DCX	H
+	DCX	H		; (HL) = ymin
+	LXI	D,YSAVE		; (DE) = saved y
+	CALL	G2CMAX
+	MOV	C,A		; save ycount
+	DCX	H		; get color0
+	DCX	H
+	MOV	A,M		; A = color0
+	ANI	00001111B	; make a nibble
+	MOV	D,A
+	DCX	H		; get color 1
+	DCX	H
+	MOV	A,M		; A = color1
+	ADD	A		; make a high nibble
+	ADD	A
+	ADD	A
+	ADD	A
+	ADD	D		; D: color1 hi nibble; color0 low
+	STA	COLOR		; save it!
+
+	LDA	YSAVE		; set up y
+	MOV	E,A		; E = ymin
+	
+G2CLP0:	LDA	XSAVE		; set up x
+	MOV	D,A		; D = xmin
+	LDA	XCOUNT
+	MOV	B,A		; B = xcount
+	
+G2CLP1:	PUSH	B
+	PUSH	D
+	CALL	G2.CALC		; get byte address
+	XCHG
+	LHLD	VP.CGT		; offset into color gen table
+	DAD	D
+	LDA	COLOR		; write new color byte
+	CALL	VP.WVD
+	POP	D
+	POP	B
+	MVI	A,8		; increment x
+	ADD	D
+	MOV	D,A
+	DCR	B
+	JNZ	G2CLP1		; cover this row
+	INR	E		; go to next row
+	DCR	C
+	JNZ	G2CLP0		; cover all rows
+	
+	RET
+
+;
+;	Get min and max from argument list
+;
+;	Entry:	(HL) =	xmin or ymin argument
+;
+;	Note: assumes xmax or ymax immediately follows
+;	in the parameter order
+;
+;	Exit:	A =	count (max - min +1)
+;		B,(DE) = min
+;
+G2CMAX:	MOV	A,M		; get min argument
+	DCX	H		; move down the stack
+	DCX	H		; to max argument
+	MOV	B,M		; get max argument
+	XCHG			; save HL
+	CMP	B		; subtract max from min
+	JC	G2CM2		; 'C' -> max was bigger, OK!
+	MOV	M,B		; max is min
+	JMP	G2CM4
+;
+;	max (B) is > min (A)
+;
+G2CM2:	MOV	M,A		; min is min
+	MOV	C,A		; C = min (temp)
+	MOV	A,B		; A = max
+	MOV	B,C		; B = min
+	
+G2CM4:	SUB	B		; A = max - min
+	INR	A		; +1 (A = count)
+	XCHG			; restore HL (arg pointer)
+	
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	mcfill(xmin,xmax,ymin,ymax,color)
+;
+;	This procedure fills a rectangular area with the
+;	specified color in mc mode. Turns off g2 erase
+;	mode as a side effect.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+MCFILL:	LXI	H,0
+	DAD	SP		; HL = stack pointer
+	INX	H
+	INX	H		; (HL) = color
+	MOV	A,M		; A = color
+	STA	COLOR		; save it
+	LXI	D,8		; prep to skip to xmin
+	JMP	AREAF1		; the rest is same as areafill()
+	
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	areafill(xmin,xmax,ymin,ymax)
+;
+;	This procedure changes all pixels within the
+;	specified rectangular area to color1 in g2 mode,
+;	erase mode left turned off.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+AREAFI:	LXI	H,0
+	DAD	SP		; HL = stack pointer
+	LXI	D,10		; offset to xmin
+;
+;	jump here from mcfill() after saving color parameter
+;
+AREAF1:	DAD	D		; (HL) = xmin
+	
+	LXI	D,XSAVE		; (DE) = xmin
+	CALL	G2CMAX		; get xmin and xcount arguments
+	STA	XCOUNT		; save vector count
+;
+;	now do y
+;
+	DCX	H
+	DCX	H		; (HL) = ymin
+	LXI	D,YSAVE		; get ymin and ycount
+	CALL	G2CMAX
+	DCR	A		; restore ymax
+	ADD	B
+	STA	YMAX
+
+	LDA	XLOC		; save old x and y
+	PUSH	PSW
+	LDA	YLOC
+	PUSH	PSW
+	XRA	A		; line mode 0
+	STA	CMPMODE
+	LDA	XSAVE		; prepare for loop
+	CALL	AFLP		; fill the area with color
+	STA	ERAMODE		; final zero restores erase mode
+	POP	PSW		; restore old x and y
+	STA	YLOC
+	POP	PSW
+	STA	XLOC
+	RET
+
+AFLP:	STA	XSAVE		; set up vector x endpoint
+	MOV	D,A
+	LDA	YSAVE		; set up vector y endpoint
+	MOV	E,A
+	
+AFLP2:	PUSH	D
+	CALL	PLOTXY		; plot a point
+	POP	D
+	LDA	YMAX		; see if last point plotted
+	CMP	E
+	JZ	AFLP4		; no
+	INR	E
+	JMP	AFLP2
+	
+AFLP4:	LDA	XCOUNT		; all vectors plotted?
+	DCR	A
+	RZ
+	STA	XCOUNT
+	LDA	XSAVE
+	INR	A
+	JMP	AFLP
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	areaclear(xmin,xmax,ymin,ymax)
+;
+;	This procedure will change all pixels in a rectangular 
+;	area to color0 when plotting in Graphics 2 mode.
+;	Graphics 2 erasing mode is turned off.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+AREACL:	MVI	A,1		; set up erasing mode
+	STA	ERAMODE		; for g2 mode
+	JMP	AREAFI		; go to common code
+
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdpixel(x,y)
+;
+;	Returns the state of the smallest addressable screen
+;	area in Multicolor or Graphics 2 mode. In Graphics 2
+;	mode a 1 will be returned if the pixel at x,y is
+;	currently at color1, or a 0 if at color0.
+;
+;	In multicolor mode the value of the color at
+;	x,y will be returned.
+;	
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDPIXE:	POP	H		; return address
+	POP	D		; E = y
+	POP	B		; C = x
+	PUSH	B		; fix the stack...
+	PUSH	D
+	PUSH	H
+	
+	MOV	D,C		; DE = x,y
+	LDA	PLOTMD		; see which mode
+	ORA	A		; 0=mc, otherwise g2
+	JZ	MCRDCL		; go get mc mode color
+	CALL	RDG2PX		; g2 mode, read pixel
+	MOV	L,A		; return in HL
+	MVI	H,0
+	RET
+;
+;	RDG2PX - read pixel in Graphics 2 mode
+;
+;	Exit:	A = 0 if Color0, 1 if Color1
+;
+RDG2PX:	CALL	G2.CALC		; get g2 mode address
+	CALL	VP.RVD		; get byte from VRAM
+	MOV	B,A		; save it
+	MVI	A,7		; get ready to shift
+	SUB	C
+	MOV	C,A
+	MOV	A,B
+	JZ	RDPIX4		; already there
+	
+RDPIX2:	RAR			; shift pixel bit down to 0
+	DCR	C
+	JNZ	RDPIX2
+	
+RDPIX4:	ANI	1		; mask all other bits
+	RET
+
+;
+;	read mc mode color
+;
+;	Entry: 	DE =	x,y
+;
+
+MCRDCL:	CALL	RDMCPX
+	MOV	L,A		; return in HL
+	MVI	H,0
+	RET
+;
+;	RDMCPX - read pixel in multicolor mode
+;
+;	Exit:	A = color value
+;
+RDMCPX:	MOV	A,D		; A = x
+	ORA	A
+	RAR			; if odd(x) then scf
+	MVI	C,1		; assume its in right nibble
+	JC	MCRD2		; and it is
+	MVI	C,5		; no, its the left nibble
+	
+MCRD2:	PUSH	B		; stack the shift count
+	CALL	MCPXRD		; read the pattern byte
+	POP	B		; get back the shift count
+	
+MCRD4:	DCR	C
+	JZ 	MCRD6
+	RAR
+	JMP	MCRD4
+	
+MCRD6:	ANI	00001111B	; mask color bits
+	RET
+
+;
+;	Calculate Graphics 2 mode byte address
+;
+;	Graphics 2 mode has 32 x 24 pattern positions,
+;	each 8x8 pixels for a total of 256 x 192 individual
+;	pixels.
+;
+;	Entry	D,E =	x,y
+;	Exit	C =	bit position
+;		HL =	VRAM address
+
+G2.CALC:XCHG			; HL = x,y
+	MOV	A,H		; A = x
+	ANI	00000111B	; x % 8 = bit within pattern
+	MOV	C,A		; save bit position
+	MOV	A,H		; H = x
+	SUB	C		; remove lower 3 bits
+	MOV	E,A		; E = column * 8
+	
+	MOV	A,L		; A = y
+	ANI	000000111B	; y % 8 = row within pattern
+	ADD	E		; add column portion
+	MOV	E,A		; E = column * 8 + byte_index
+	
+	MOV	A,L		; A = y
+;	ANI	0F8H		; A = row*8
+	RAR			; A = y / 8
+	RAR
+	RAR
+
+	MOV	H,A		; HL = row * 256
+	MOV	L,E		; form final address
+	
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	vdpstatus()
+;
+;	Read VDP status
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+VDPSTA:	IN	VDPADR+1
+	MOV	L,A		; return in HL
+	MVI	H,0
+	RET
+	
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	vdpoptions(options)
+;
+;	set VDP options
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+VDPOPT:	POP	H		; return address
+	POP	D		; DE = options
+	PUSH	D		; fix the stack...
+	PUSH	H
+	
+	XCHG			; HL = options
+	CALL	VP.SOP		; Set Options
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	pattnametable(address)
+;
+;	Set patttern name table address
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+PATTNA:	POP	H		; return address
+	POP	D		; DE = address
+	PUSH	D		; fix the stack...
+	PUSH	H
+	
+	XCHG			; HL = address
+	CALL	VP.SPN		; Set Pattern Name
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	colgentable(address)
+;
+;
+;	Set color generator table address
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+COLGEN:	POP	H		; return address
+	POP	D		; DE = address
+	PUSH	D		; fix the stack...
+	PUSH	H
+	
+	XCHG			; HL = address
+	CALL	VP.SCG		; Set Color Generator
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	pattgentable(address)
+;
+;	Set pattern gen table
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+PATTGE:	POP	H		; return address
+	POP	D		; DE = address
+	PUSH	D		; fix the stack...
+	PUSH	H
+	
+	XCHG			; HL = address
+	CALL	VP.SPG		; Set Pattern Generator
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	sprnametable(address)
+;
+;	Set sprite name table
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+SPRNAM:	POP	H		; return address
+	POP	D		; DE = address
+	PUSH	D		; fix the stack...
+	PUSH	H
+	
+	XCHG			; HL = address
+	CALL	VP.SSN		; Set Sprite Name
+	RET
+
+;****************************************************************
+;
+;	Set sprite gen table
+;
+;	sprpatrntable(address)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+SPRPAT:	POP	H		; return address
+	POP	D		; DE = address
+	PUSH	D		; fix the stack...
+	PUSH	H
+	
+	XCHG			; HL = address
+	CALL	VP.SSG		; Set Sprite Generator
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	Set text/backdrop color
+;
+;	bordercolor(color)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+BORDER:	POP	H		; return address
+	POP	B		; C = color
+	PUSH	B		; fix the stack...
+	PUSH	H
+
+	MOV	A,C		; A = color
+	CALL	VP.STB		; Set background
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	blockwrite(sourceaddress,vramaddress,count)
+;
+;	Block move to VRAM
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+BLOCKW:	POP	H		; return address
+	POP	D		; DE = count
+	POP	B		; BC = VRAM address
+	
+	PUSH	H		; save return addr
+	MOV	H,B		; HL = BC = destination (VRAM)
+	MOV	L,C
+	CALL	VP.SWA		; set up as VRAM write address
+	POP	H		; restore HL (return addr)
+	
+	POP	B		; BC = source address (RAM))
+	
+	PUSH	B		; fix the stack... (4 pushes)
+	PUSH	B
+	PUSH	D
+	PUSH	H
+;
+;	DE = count
+;	BE = source (RAM)
+;	Destination address (in VRAM) established
+;
+BWLOOP:	MOV	A,D		; check for count done
+	ORA	E		; check for all bits in DE zero
+	RZ			; done!
+	LDAX	B		; get byte to move
+	OUT	VDPADR		; send it, VRAM address auto increments
+	INX	B		; next source byte pointer
+	DCX	D		; count down...
+	JMP	BWLOOP
+
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	blockread(destaddress,vramaddress,count)
+;
+;	Move count bytes from VRAM to RAM at specified
+;	source (VRAM) and destination (RAM) addresses.
+;	Caller is responsible for ensuring that the
+;	destination in RAM has sufficient room to hold
+;	the result.
+;
+;	registers:
+;
+;	   BC -- address of first destination byte
+;	   DE -- vram source address
+;	   HL -- count
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+BLOCKR:	POP	H		; return address
+	POP	D		; DE = count
+	POP	B		; BC = VRAM address
+	
+	PUSH	H		; save return addr
+	MOV	H,B		; HL = BC = source (VRAM)
+	MOV	L,C
+	CALL	VP.SRA		; set up as VRAM read address
+	POP	H		; restore HL (return addr)
+	
+	POP	B		; BC = dest address (RAM))
+	
+	PUSH	B		; fix the stack... (4 pushes)
+	PUSH	B
+	PUSH	D
+	PUSH	H
+;
+;	Ready to execute move, with:
+;		DE = count
+;		BC = destination in RAM
+;		source destination (in VRAM) set
+;
+BRLOOP:	MOV	A,D		; check for count done
+	ORA	E		; check for all bits in DE zero
+	RZ			; done!
+	IN	VDPADR		; read byte from VRAM and autoincrement
+	STAX	BC		; store it in RAM
+	INX	BC		; next destination location
+	DCX	DE		; count down...
+	JMP	BRLOOP
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	wrtvramdirect(address,data)
+;
+;	write VRAM direct
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+WRTVRA:	POP	H		; return address
+	POP	D		; E = value to write
+	POP	B		; BC = VRAM address
+	PUSH	B		; fix the stack...
+	PUSH	D
+	PUSH	H
+
+	MOV	H,B		; HL = address
+	MOV	L,C
+	MOV	A,E		; get byte
+	CALL	VP.WVD		; write it
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	rdvramdirect(address);
+;
+;	Read VRAM direct
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RDVRAM:	POP	H		; return address
+	POP	B		; BC = VRAM address
+	PUSH	B		; fix the stack...
+	PUSH	H
+
+	MOV	H,B		; position address
+	MOV	L,C
+	CALL	VP.RVD		; read byte
+	MOV	L,A		; return in HL
+	MVI	H,0
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=
+;	VDP I/O Routines
+; =-=-=-=-=-=-=-=-=-=-=-=-=
+
+; -------------------------------------
+;
+;	VP.WRR - Write to VDP register
+;
+;		Registers:
+;
+;			L:	Register to be written
+;			A:	Data byte to be written to register
+;
+;		All registers are preserved.
+;
+VP.WRR:	PUSH	PSW		; save psw
+	OUT	VDPADR+1	; write to control register
+	MOV	A,L		; pick up register number to be written
+	ANI	00000111B	; mask all but register address
+	ORI	10000000B	; high order bit must be on
+	OUT	VDPADR+1	; write to control register
+	POP	PSW		; restore psw
+	RET			; return to caller
+
+; -------------------------------------
+;
+;	VP.SWA - Set VRAM write address
+;
+;	Entry:	HL =	VRAM address to be written to
+;
+;	All registers are preserved.
+;
+VP.SWA:	PUSH	PSW
+	MOV	A,L		; pick up low order byte of RA< address
+	OUT	VDPADR+1	; write to control port
+	MOV	A,H		; pick up high order byte of RAM address
+	ANI	00111111B	; VRAM addresses are only 14 bits
+	ORI	01000000B	; top 2 bits must be 0 and 1 for setup
+	OUT	VDPADR+1	; write to control port
+	POP	PSW
+	RET
+	
+; -------------------------------------
+;
+;	VP.WVD - Write to VRAM direct
+;
+;	Entry:	HL =	VRAM address to be written to
+;		A =	Byte to be written
+;
+;	All registers are preserved.
+;
+VP.WVD:	CALL	VP.SWA		; set write address
+	CALL	VPWRITE		; write to VRAM
+	RET
+	
+VPWRITE:OUT	VDPADR
+	RET
+
+; -------------------------------------
+;
+;	VP.SRA - Set VRAM read address
+;
+;	Entry:	HL = 	VRAM address to be read
+;
+VP.SRA:	MOV	A,L		; low order byte of RAM address
+	OUT	VDPADR+1	; write to control port
+	MOV	A,H		; high order byte of RAM address
+	ANI	00111111B	; VRAM addresses are only 14 bits
+	OUT	VDPADR+1	; write to control port
+	RET
+
+; -------------------------------------
+;
+;	VP.RVD - Read one byte from VRAM direct
+;
+;	Entry:	HL =	VRAM address to be read
+;
+;	Exit:	A =	Byte retrieved from VRAM
+;
+VP.RVD:	CALL	VP.SRA		; set read address
+	CALL	VP.RD1		; read from VRAM
+	RET
+
+; -------------------------------------
+;
+;	VP.RD1 - perform the VRAM read function
+;
+;	NOTE: go through 2 subs to delay the required 
+;	6 microseconds
+;
+VP.RD1:	CALL	VP.RD2
+	RET
+	
+VP.RD2:	IN	VDPADR		; read from VRAM
+	RET
+	
+; -------------------------------------
+;
+;	Register maintenance routines.
+;
+;	In all of the following routines, register HL contains the address
+;	of the appropriate table.
+;
+;	These routines preserve all registers.
+;
+
+; -------------------------------------
+;
+;	VP.SOP - set options
+;
+;	Entry:	L = content for Options Control Register (Reg. 1)
+;		H = content for External Video Register (Reg. 0)
+;
+VP.SOP:	PUSH	PSW		; save psw
+
+	SHLD	VP.OPT		; save vdp options
+	MOV	A,L		; move in options control register
+	MVI	L,VP.OCR	; select option control register
+	CALL	VP.WRR		; write option control register
+	
+	MOV	A,H		; move in external video register
+	MVI	L,VP.EVR	; select external video register
+	CALL	VP.WRR		; write external video register
+	
+	POP	PSW
+	RET
+
+
+; -------------------------------------
+;
+;	VP.STB - set text/backdrop
+;
+VP.STB:	PUSH	HL		; save HL
+	STA	VP.TBC		; save text/backdrop color
+	MVI	L,VP.TBR	; select text/backdrop register
+	CALL	VP.WRR		; write text/backdrop color
+	POP	HL		; restore HL
+	RET
+
+; -------------------------------------
+;
+;	VP.SPN - set pat name table base address register
+;
+VP.SPN:	PUSH	PSW		; save psw
+	PUSH	HL		; save HL
+	SHLD	VP.PNT		; store address of pat name table
+;
+;	move high order 4 bits of address to register A
+;
+	MOV	A,H		; pick up high order address
+	RRC			; high order 5 bits
+	RRC			; high order 4 bits
+;
+;	write pat name table register
+;
+	MVI	L,VP.NTR	; pat name table register
+	CALL	VP.WRR		; write it to vdp
+;
+;	restore registers and return
+;
+	POP	HL		; restore HL
+	POP	PSW		; restore psw
+	RET
+
+; -------------------------------------
+;
+;	VP.SPG - set pattern generator table base address register
+;
+VP.SPG:	PUSH	PSW		; save psw
+	PUSH	HL		; save HL
+	SHLD	VP.PGT		; store address of pattern generator table
+;
+;	move high order 3 bits to register A
+;
+	MOV	A,H		; pick up high order address
+	RRC			; high order 5 bits
+	RRC			; high order 4 bits
+	RRC			; high order 3 bits
+;
+;	write pattern generator table register
+;
+	MVI	L,VP.PGR	; pattern generator table register
+	CALL	VP.WRR		; write it to vdp
+;
+;	restore registers and return
+;
+	POP	HL		; restore HL
+	POP	PSW		; restore psw
+	RET
+
+; -------------------------------------
+;
+;	VP.SSN - set sprite name table base address register
+;
+VP.SSN:	PUSH	PSW		; save psw
+	PUSH	HL		; save HL
+	SHLD	VP.SNT		; store address of sprite name table
+;
+;	move high order 7 bits of address to register A
+;
+	MOV	A,L		; low order byte
+	RLC			; get seventh bit out of low order byte
+	MOV	A,H		; high order byte
+	RAL			; put seventh bit in register A
+;
+;	write sprite name table register
+;
+	MVI	L,VP.SNR	; sprite name table register
+	CALL	VP.WRR		; write it to vdp
+;
+;	restore registers and return
+;
+	POP	HL		; restore HL
+	POP	PSW		; restore psw	
+	RET
+
+; -------------------------------------
+;
+;	VP.SSG - set sprite generator table base address register
+;
+VP.SSG:	PUSH	PSW		; save psw
+	PUSH	HL		; save HL
+	SHLD	VP.SGT		; store address of sprite generator table
+;
+;	move high order 3 bits of address to register A
+;
+	MOV	A,H		; pick up high order address
+	RRC			; high order 5 bits
+	RRC			; high order 4 bits
+	RRC			; high order 3 bits
+;
+;	write sprite generator table register
+;
+	MVI	L,VP.SGR	; sprite generator table register
+	CALL	VP.WRR		; write it
+;
+;	restore registers and return
+;
+	POP	HL		; restore HL
+	POP	PSW		; restore psw
+	RET
+
+; -------------------------------------
+;
+;	VP.SCG - set color generator table base address register
+;
+VP.SCG:	PUSH	PSW		; save psw
+	PUSH	HL		; save HL
+	SHLD	VP.CGT		; store address of color generator table
+;
+;	move high order 8 bits to register A
+;
+	MOV	A,L		; low order address
+	RLC
+	RLC
+	MOV	L,A		; register L now set up
+	MOV	A,H		; high order address
+	RLC
+	RLC
+	ADD	L		; high order 8 bits now in register A
+;
+;	write color generator table register
+;
+	MVI	L,VP.CTR	; color generator table register
+	CALL	VP.WRR		; write it
+;
+;	restore registers and return
+;
+	POP	HL		; restore HL
+	POP	PSW		; restore psw
+	RET
+
+;
+;	tables and variables for vdp plotting
+;
+
+
+PLOTMD:	DB	0		; non zero = g2 mode
+ERAMODE:DB	0		; non zero = erasing mode
+CMPMODE:DB	0		; non zero = complement mode
+
+XLOC:	DB	0		; next x location for plot or move
+YLOC:	DB	0		; next y location for plot or move
+COUNT:	DB	0		; dot counter for line drawing
+
+VP.SGT:	DW	0		; address of sprite generator table in VRAM
+VP.CGT:	DW	0		; address of color generator table in VRAM
+VP.SNT:	DW	0		; address of sprite name table in VRAM
+VP.PGT:	DW	0		; address of pattern generator table in VRAM
+VP.PNT:	DW	0		; address of pat name table in VRAM
+VP.TBC:	DB	0		; text/backdrop color
+VP.OPT:	DW	0		; vdp options
+
+A$.TBL:	DB	1, 0, 1, 1,-1, 0,-1, 1
+	DB	1, 0, 1,-1,-1, 0,-1,-1
+	DB	0, 1, 1, 1, 0, 1,-1, 1
+	DB	0,-1, 1,-1, 0,-1,-1,-1
+
+COLOR:	DB	0
+BITTAB:	DB	10000000B
+	DB	01000000B
+	DB	00100000B
+	DB	00010000B
+	DB	00001000B
+	DB	00000100B
+	DB	00000010B
+	DB	00000001B
+	
+XSAVE:	DB	0
+YSAVE:	DB	0
+YMAX:	DB	0
+XCOUNT:	DB	0
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	SPRITE.MAC - routines to support sprite functions
+;
+;	Video Display Processor (VDP) support routines for
+;	the HA-8-3 with Texas Instruments TMS9918A/TMS9928A.
+;
+;	Adapted for Software Toolworks C/80 bindings
+;	by Glenn Roberts, May 2022
+;
+;	Adapted from "Graphics Support Routines for V3.8 
+;	Lucidata Pascal, Copyright (C) 1982 Polybytes (public
+;	released 1988)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	Public routines defined in this module:
+;
+	PUBLIC	DEFSPR	; defsprite()
+	PUBLIC	POSITS	; positsprite()
+	PUBLIC	WRTEAR	; wrtearlybit()
+	PUBLIC	CHGSPR	; chgsprcolor()
+	PUBLIC	CRPATT	; crpattern()
+	PUBLIC	ASGSPR	; asgsprpattern()
+	
+	PUBLIC	CRSPRI	; crsprite()   	GFR 07/17/22
+
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	crsprite(sprnumber,x,y,color,early)
+;
+;	Create Sprite (w/o assigning pattern)
+;	added by G. Roberts 17 July, 2022
+;
+;	Same as defsprite() except pattern is not
+;	defined.  pattern must be created separately
+;	via crpattern() and linked via asgsprpattern().
+;
+;	sprnumber	name/number of sprite
+;	x,y		horizontal & vertical coord's
+;	color		color for '1' bits
+;	early		state of 'early' bit (0/1)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CRSPRI:	LXI	H,0
+	DAD	SP		; HL = stack pointer
+	LXI	D,10		; offset to sprite number
+	DAD	D		; (HL) = sprite number
+	MOV	A,M		; A = sprite #
+	MOV	C,A		; save a copy
+
+	CALL	DEFSP1		; store x, y, color and early
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	defsprite(sprnumber,x,y,color,early,pattern)
+;
+;	Define Sprite
+;
+;	sprnumber	name/number of sprite
+;	x,y		horizontal & vertical coord's
+;	color		color for '1' bits
+;	early		state of 'early' bit (0/1)
+;	pattern		array of bytes (8 or 32)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+DEFSPR:	LXI	H,0
+	DAD	SP		; HL = stack pointer
+	LXI	D,12		; offset to sprite number
+	DAD	D		; (HL) = sprite number
+	MOV	A,M		; A = sprite #
+	MOV	C,A		; save a copy
+
+	CALL	DEFSP1		; store x, y, color and early
+
+	DCX	H		; point to hi byte of pattern addr
+	MOV	D,M
+	DCX	H		; low byte
+	MOV	E,M		; (DE) = pattern
+	CALL	SPPATSV		; write pattern
+	RET
+	
+;
+;	DEFSP1 - store x, y, color and early parameters
+;
+;	ENTRY:
+;	  (HL) = sprite number in parameters list
+;	  A = sprite #
+;	  C = sprite # (saved copy)
+;
+;	EXIT:
+;	  (HL) = early in parameters list
+;
+DEFSP1:	XCHG			; (DE) = sprite number
+	CALL	VP.SAA		; HL = sprite attribute address
+	DCX	D
+	DCX	D		; point to y
+	LDAX	D		; A = y
+	CALL	VP.WVD		; put y in table
+	INX	H		; next table entry
+	DCX	D
+	DCX	D		; point to x
+	LDAX	D		; A = x
+	CALL	VP.WVD		; put x in table
+	INX	H		; next table entry
+;
+;	Check if small or large sprites
+;
+	LDA	VP.OPT		; get options
+	ANI	VP.S1		; is it 16x16
+	MOV	A,C		; sprite #
+	JZ	DEFSP2		; no just use sprite #
+	ADD	A		; name = 4x number for large sprites
+	ADD	A
+DEFSP2:CALL	VP.WVD		; write sprite name
+	INX	H		; next table entry
+	DCX	D
+	DCX	D		; point to color
+	LDAX	D		; A = color
+	MOV	B,A		; save it in B
+	DCX	D
+	DCX	D		; point to early
+	LDAX	D		; A = early
+	RRC			; move low bit to ms bit
+	ANI	10000000B	; and clear the rest
+	ORA	B		; combine early with color
+	CALL	VP.WVD		; write in table
+	XCHG			;(HL) = early (in param's list)
+	RET
+
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	positsprite(sprnumber,x,y)
+;
+;	Position Sprite - change the position of a
+;	previously-defined sprite.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+POSITS:	LXI	H,0
+	DAD	SP		; HL = stack pointer
+	INX	H		; skip past return addr
+	INX	H
+	MOV	B,M		; B = (HL) = y
+	INX	H
+	INX	H
+	MOV	C,M		; C = (HL) = x
+	INX	H
+	INX	H
+	MOV	A,M		; A = (HL) = sprite number
+
+	CALL	VP.SAA		; HL = sprite attribute address
+	MOV	A,B		; position y
+	CALL	VP.WVD		; write y to table
+	INX	H		; next...
+	MOV	A,C		; position x
+	CALL	VP.WVD		; write x to table
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	wrtearlybit(sprnumber,early)
+;
+;	Set the early bit on or off
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+WRTEAR:	POP	H		; return address
+	POP	D		; E = early
+	POP	B		; C = sprite #
+	PUSH	B		; fix the stack...
+	PUSH	D
+	PUSH	H
+	
+	CALL	SPGCOL		; A = color/early byte
+	ANI	01111111B	; remove early bit
+	MOV	B,A		; B = color portion
+	MOV	A,E		; get early bit
+	ANI	00000001B	; strip all but 1
+	RRC			; move into position
+	ORA	B		; restore color portion
+	CALL	VP.WVD		; write into table
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	chgsprcolor(sprnumber,color)
+;
+;	Set new sprite color
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CHGSPR:	POP	H		; return address
+	POP	D		; E = color
+	POP	B		; C = sprite #
+	PUSH	B		; fix the stack...
+	PUSH	D
+	PUSH	H
+	
+	CALL	SPGCOL		; A = color/early byte
+	ANI	10000000B	; remove old color
+	MOV	B,A		; B = earlybit portion
+	MOV	A,E		; get new color
+	ANI	00001111B	; save only significant bits
+	ORA	B		; add back early bit
+	CALL	VP.WVD		; put back into table
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	crpattern(patnumber,pattern)
+;
+;	Create new sprite pattern
+;
+;	Creates a new sprite pattern, or updates an existing
+;	pattern. Does not 'connect' a pattern with a sprite!
+;
+;	patnumber is the number of the pattern being defined.
+;	range: [0-255] for small sprites, [0-63] for large.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CRPATT:	POP	H		; return address
+	POP	D		; (DE) = pattern data
+	POP	B		; C = pattern #
+	PUSH	B		; fix the stack...
+	PUSH	D
+	PUSH	H
+;
+;	Sprite Pattern Save
+;
+;	Entry:	(DE) = 	pattern data in RAM
+;		C = 	pattern # ('name')
+;
+SPPATSV:PUSH	D		; save pattern pointer
+	MOV	L,C		; get pattern # into HL
+	MVI	H,0		; as 16 bit number
+	LDA	VP.OPT		; get VDP options byte
+	ANI	VP.S1		; is it a 16x16?
+;
+;	Compute HL as offset in SGT for the pattern.
+;	Multiply pattern number by 8 for small, 32 for large
+;
+	JZ	SPPATR4		; no
+	DAD	H		; yes, multiply by 4 extra
+	DAD	H
+SPPATR4:DAD	H		; multiply by 8
+	DAD	H
+	DAD	H
+;
+;	HL now contains the offset in sprite generator table.
+;
+	XCHG			; save it in DE
+	LHLD	VP.SGT		; base SGT address in VRAM
+	DAD	D		; add the offset
+;
+;	HL now  has target address of pattern in SGT (VRAM)
+;
+	POP	D		; DE points to pattern data in RAM
+;
+;	Write sprite pattern
+;
+	MVI	C,8		; set default pattern size
+	LDA	VP.OPT		; get VDP options byte
+	ANI	VP.S1		; is it a 16x16?
+	JZ	SPPAT2		; no, use default
+	MVI	C,32		; yes, need 4x as many bytes
+SPPAT2:	LDAX	D		; get a byte of the pattern
+	CALL	VP.WVD		; write it to the SGT in VRAM
+	DCR	C		; and count down
+	RZ			; ... to zero (done)
+	
+	INX	D		; else point at next RAM source byte
+	INX	H		; and point at next VRAM destination
+	JMP	SPPAT2		; then loop...
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	asgsprpattern(patnumber,sprnumber)
+;
+;	Assign sprite pattern
+;
+;	This procedure assigns a pattern to a previously-
+;	defined sprite, effecting an 'instantaneous' shape
+;	change. The original sprite pattern is not changed,
+;	but is 'disconnected' by this function.
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ASGSPR:	POP	H		; return address
+	POP	D		; E = sprite #
+	POP	B		; C = pattern #
+	PUSH	B		; fix the stack...
+	PUSH	D
+	PUSH	H
+	
+	MOV	A,E		; sprite number
+	CALL	VP.SAA		; get name table address
+	INX	H		; point at name position
+	INX	H
+	LDA	VP.OPT		; check size
+	ANI	VP.S1		; is it 16x16?
+	MOV	A,C		; A = pattern #
+	JZ	ASGSP1		; no - store it as is
+	ADD	A		; yes (16x16): name = name*4
+	ADD	A
+ASGSP1:	CALL	VP.WVD		; write new pattern name
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=
+;	Utility Routines
+; =-=-=-=-=-=-=-=-=-=-=-=-=
+
+; -------------------------------------
+;
+;	VP.SAA - get sprite attribute address
+;
+;	Entry:	A =	Sprite #
+;
+;	Exit:	HL =	Sprite attribute address
+;
+;	Saves:	PSW
+;
+VP.SAA:	PUSH	PSW
+	ADD	A
+	ADD	A		; 4 bytes/entry in table
+	LHLD	VP.SNT		; base address of sprite name table
+	ORA	L		; add in offset
+	MOV	L,A		; and return to VRAM address
+	POP	PSW
+	RET
+
+; -------------------------------------
+;
+;	Get sprite color/early byte
+;
+
+SPGCOL:	MOV	A,C		; get sprite number
+	CALL	VP.SAA		; get attribute table address
+	INX	H
+	INX	H
+	INX	H		; go to last byte in the table
+	CALL	VP.RVD		; read it
+	RET
+
+;	INCLUDE	PAINT.MAC
+
+	END
