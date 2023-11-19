@@ -1,0 +1,7 @@
+Things that need to be added or improved:
+
+1. Circle drawing and arcs
+2. Pixelated text including different font styles
+3. Fold the hershey font work into the core library
+4. Tasking and timing tied to either the 2ms interrupt or 1/60 sec raster interrupt
+5. Area/Region fill
