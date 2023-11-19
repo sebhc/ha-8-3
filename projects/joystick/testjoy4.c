@@ -198,6 +198,11 @@ updatesprites()
 			sp->x += DX;
 			
 		/* make sure we stay inside the screen area */
+		if (sp->x < 0)
+			sp->x += XWIDTH;
+		if (sp->y < 0)
+			sp->y += YHEIGHT;
+			
 		sp->x %= XWIDTH;
 		sp->y %= YHEIGHT;
 		
