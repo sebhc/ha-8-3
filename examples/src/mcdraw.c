@@ -1,34 +1,25 @@
 /*
-	vectors - this program draws a series of vectors on the screen. it
-	demonstrates the use of the move and plot functions for
-	the ha83 function.
+**	mcdraw
+**
+**	Adapted from the program VECTORS.PAS in "Graphics Support 
+**	Routines for V3.8	Lucidata Pascal", Copyright (C) 1982 Polybytes
+**	(public released 1988).
+**
+**	This program draws a series of concentric rectangles of varying
+**	colors.
+**
+**	Demonstrates use of the TMS9918A "Multi-color" mode point and line drawing.
+**
+**	Tailored for Software Toolworks C/80 3.1
+**	Use M80 for assembler. Required libraries: CLIBRARY.REL and HA83.REL 
+**
+**	Recommended link command:
+**
+**	L80 MCDRAW,HA83,CLIBRARY,MCDRAW/N/E/M
+**
+**	Adapted by Glenn Roberts 31 October 2022
 */
-
-/* the following should go into a .h file... /GFR/ */
-
-#define	VPNEV		0			/* no external video */
-#define	VP16K		0x80	/* 16k ram chips */
-#define	VPDDP		0			/* blank display */
-#define	VPEDP		0x40	/* enable display */
-#define	VPDI		0			/* disable interrupts */
-#define	VPPM		0			/* pattern mode */
-
-#define	c_transp		0
-#define	c_black			1
-#define	c_midgrn		2
-#define	c_ltgrn			3
-#define	c_dkblue		4
-#define	c_ltblue		5
-#define	c_dkred			6
-#define	c_cyan			7
-#define	c_midred		8
-#define	c_ltred			9
-#define	c_dkyell		10
-#define	c_ltyell		11
-#define	c_dkgrn			12
-#define	c_magenta		13
-#define	c_gray			14
-#define	c_white			15
+#include "ha83.h"
 
 #define MAXY		24
 #define	MAXX		32
@@ -86,5 +77,8 @@ main()
 			--yborder;
 			--xborder;
 		} while (yborder >= 0);
+#ifdef	CPM
+		CtlCk();
+#endif
   } while (1);
 }

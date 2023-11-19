@@ -6,6 +6,7 @@
 #define	VPEDP		0x40	/* enable display */
 #define	VPDI		0	/* disable interrupts */
 #define	VPPM		0	/* pattern mode (Graphics I) */
+#define	VPTX		0x10	/* text mode (GFR) */
 #define	VPG2		0x200	/* enable Graphics II mode */
 #define	VPS1		0x02	/* size 1 (16x16 bit) sprites */
 #define	VPM1		0x01	/* sprite magnification (2x) */

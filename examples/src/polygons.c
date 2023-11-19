@@ -34,7 +34,7 @@
 #define	NMAX	50
 
 int barray[NMAX], carray[NMAX], harray[NMAX];
-int i, n, n1, j, j1, j2, f, erasing, cmode;
+int i, n, n1, j, j1, j2, f, erasing, docomp;
 
 float wpi, cos(), sin();
 
@@ -100,11 +100,11 @@ main()
 				puts("Make it negative to use complement mode lines.");
 				puts(" (in [3..50]) >");
 				if ((n = getval()) < 0) {
-					cmode = TRUE;
+					docomp = TRUE;
 					n = -n;
 				}
 				else
-					cmode = FALSE;
+					docomp = FALSE;
 				/* exit when we have a valid n */
 				if ((n >= NMIN) && (n <= NMAX))
 					break;
@@ -122,7 +122,7 @@ main()
 			** and set complementary mode based on 'comp'
 			*/
 			initg2mode(c_dkblue, 0, 0, c_ltyell, c_dkgrn);
-			compmode(cmode);
+			compmode(docomp);
 		}
 
 		/* now draw the polygon and connect vertices */
@@ -159,7 +159,7 @@ main()
 			getchar();
 		}
 		erasing = !erasing;
-		if (!cmode) 
+		if (!docomp) 
 			eraser(erasing);
 	} while (TRUE);
 }

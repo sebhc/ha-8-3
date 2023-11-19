@@ -102,6 +102,10 @@ main()
 	drawbox();
 	do {
 		throwball();
+		/* for CP/M check for user interrupt via Ctrl-C */
+#ifdef CPM
+		CtlCk();
+#endif
 		/* delay, then repeat... */
 		for (i=1; i<10000; i++)
 			;

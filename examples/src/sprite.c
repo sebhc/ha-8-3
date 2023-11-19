@@ -19,11 +19,16 @@
 **	Use M80 for assembler. Required libraries: MATHLIB.REL, FLIBRARY.REL
 **	CLIBRARY.REL and HA83.REL 
 **
+**	To compile for CP/M be sure to define "CPM":
+**
+**	c -qCPM=1 sprite
+**
 **	Recommended link command:
 **
 **	L80 SPRITE,HA83,MATHLIB/S,FLIBRARY/S,CLIBRARY,SPRITE/N/E/M
 **
 **	Adapted by Glenn Roberts 31 October 2022
+**	updated 8 November 2023 (CP/M support)
 */
 #include "ha83.h"
 
@@ -51,8 +56,19 @@ float degtorad, sin();
 
 /* millisecond timer utility to pace the speed */
 
-/* pointer to 2-ms clock */
-#define TICCNT	0x201B
+/* pointer to 2-ms clock (note: HDOS and CP/M use different
+** locations.
+*/
+#ifdef CPM
+
+/* CP/M puts it in low RAM */
+#define TICCNT  0x000B
+#else
+/* HDOS TICCNT = 040.033A */
+#define TICCNT  0x201B
+
+#endif
+
 unsigned *Ticptr = TICCNT;
 unsigned timeout;
 
@@ -98,6 +114,9 @@ main()
 			positsprite(0,x,y);
 			/* wait 10ms to slow things down for easier viewing */
 			mswait(10);
+#ifdef	CPM
+			CtlCk();
+#endif
 	  }
 		
 		/* change sprite color (skip transparent and black) */

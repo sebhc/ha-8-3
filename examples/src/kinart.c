@@ -18,7 +18,7 @@
 **
 **	Recommended link command:
 **
-**	L80 KINART,HA83,STDLIB/S,CLIBRARY,KINART/N/E/M
+**	L80 KINART,HA83,RND,STDLIB/S,CLIBRARY,KINART/N/E/M
 **
 **	Adapted by Glenn Roberts 31 October 2022
 */
@@ -27,10 +27,9 @@
 #define	TRUE	1
 #define	FALSE	0
 
-#define	XMIN		0
-#define	YMIN		0
-#define	XMAX		255
 #define	YMAX		191
+#define	WIDTH		256
+#define	HEIGHT	192
 #define	MAXLINE	150
 
 /* values for random number generator */
@@ -51,12 +50,24 @@ int	inum;
 int complement;
 int	x1,y1,x2,y2;
 
-/* millisecond timer utility to pace the speed */
+//* millisecond timer utility to pace the speed */
 
-/* pointer to 2-ms clock */
-#define TICCNT	0x201B
+/* pointer to 2-ms clock (note: HDOS and CP/M use different
+** locations.
+*/
+#ifdef CPM
+
+/* CP/M puts it in low RAM */
+#define TICCNT  0x000B
+#else
+/* HDOS TICCNT = 040.033A */
+#define TICCNT  0x201B
+
+#endif
+
 unsigned *Ticptr = TICCNT;
 unsigned timeout;
+
 
 /* mswait - wait a specified number of milliseconds */
 mswait(milliseconds)
@@ -99,23 +110,16 @@ initialize()
 {
 	int i;
 	char ch;
-	char *p1;
-	char *p2;
-	char *p3;
-	char *p4;
 
 	puts("Complement (C) or Normal (N) vectors? >");
 	ch = getchar();
 	putchar('\n');
 	complement = ((ch=='C') || (ch=='c'));
 	
-	/* HDOS working areas used for randomization */
-	p1 = 0x2230;
-	p2 = 0x2240;
-	p3 = 0x2250;
-	p4 = 0x2260;
+	/* seed random number generator */
+	rnd(12345);
 	
-	x1 = *p3;
+	x1 = rnd(0)
 	x2 = *p4;
 	y1 = *p2 & 0x7F;
 	y2 = *p1 & 0x7F;
@@ -195,16 +199,16 @@ main()
 			}
 			
 			/* correct deltas to keep things in bounds */
-			if ((x1+dx1)<XMIN  || (x1+dx1)>XMAX)
+			if ((x1+dx1)<0  || (x1+dx1)>=WIDTH)
 				dx1 = -dx1;
 			x1 += dx1;
-			if ((y1+dy1)<YMIN  ||  (y1+dy1)>YMAX)
+			if ((y1+dy1)<0  ||  (y1+dy1)>=HEIGHT)
 				dy1 = -dy1;
 			y1 += dy1;
-			if ((x2+dx2) < XMIN  ||  (x2+dx2)>XMAX)
+			if ((x2+dx2) < 0  ||  (x2+dx2)>=WIDTH)
 				dx2 = -dx2;
 			x2 += dx2;
-			if ((y2+dy2) < YMIN  ||  (y2+dy2)>YMAX)
+			if ((y2+dy2) < 0  ||  (y2+dy2)>=HEIGHT)
 				dy2 = -dy2;
 			y2 += dy2;
 			

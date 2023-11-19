@@ -4,6 +4,10 @@
 **	Load and display a "Hershey" vector font from the ".JHF"
 **	file specified on the command line.
 **
+**  To compile for CP/M be sure to #define CPM:
+**
+**		c -qCPM=1 hershey
+**
 **	Glenn Roberts 31 March 2023
 */
 #include "ha83.h"
@@ -31,8 +35,20 @@ struct font {
   struct point *strokes;
 } ftab[96];
 
-/* HDOS TICCNT location */
-#define TICCNT	0x201B
+
+/* pointer to 2-ms clock (note: HDOS and CP/M use different
+** locations.
+*/
+#ifdef CPM
+
+/* CP/M puts it in low RAM */
+#define TICCNT  0x000B
+#else
+/* HDOS TICCNT = 040.033A */
+#define TICCNT  0x201B
+
+#endif
+
 unsigned *Ticptr = TICCNT;
 unsigned timeout;
 
@@ -85,7 +101,7 @@ int r, c;
 	while ((*s != 0) && 
 				(r >= 0) && (r < 24) &&
 				(c >= 0) && (c < 32)) {
-		blockwrite(alpha[(*s)-' '], 8*(r*32 + c), 8);
+		blockwrite(alpha[*s], 8*(r*32 + c), 8);
 		c++;
 		s++;
 	}
@@ -111,12 +127,15 @@ int xorg, yorg;
 			penup = TRUE;
 		else {
 			/* now do the draw or move */
+			x += xorg;
+			y += yorg;
 			if (penup) {
-				move(xorg + x, yorg + y);
+				move(x, y);
 				penup = FALSE;
 			}
-			else
-				draw(xorg + x, yorg + y);
+			else {
+				draw(x, y);
+			}
 		}
 	}
 }

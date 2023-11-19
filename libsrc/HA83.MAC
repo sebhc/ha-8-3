@@ -194,8 +194,19 @@ VP.NEC	EQU	00000000B	; no early clock
 ;
 ;	A/D port number
 ;
+;	On the new version of HA-8-3 the A/D port number is normally
+;	changed from 276Q to 366Q in order to avoid a conflict with
+;	the Z67-IDE+ if it is assigned to 274Q. To effect this reassignment
+;	jumper JP14 should be *removed*.  The original NOGDS HA-8-3
+;	board could be similiarly reworked following the instructions
+;	in the user manual
+;
 ADADR	EQU	276Q
-
+;
+;	For testing with RomWBW board and new HA-8-3-F18 board
+;	we need to set this back to the default... (276)
+;
+; ADADR	EQU	366Q
 ;
 ;	Public routines defined in this module:
 ;
